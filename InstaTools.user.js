@@ -2,7 +2,7 @@
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
 // @version      0.1.16
-// @description  instagram enhancements for power users
+// @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
 // @downloadURL  https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
