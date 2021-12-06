@@ -556,24 +556,8 @@
     renderReel(reelItemsChronological, container);
   }
 
-  function openReelWindow() {
-    const reelWindow = openNewTab();
-    // const container = createElementPlus({
-    //   tagName: "div",
-    //   className: "container",
-    // });
-    // reelWindow.document.body.appendChild(container);
-    // const spinner = createElementPlus({
-    //   tagName: "div",
-    //   className: "load-spinner",
-    // });
-    // container.appendChild(spinner);
-    // reelWindow.container = container;
-    return reelWindow;
-  }
-
   async function openUserStory(userName) {
-    const reelWindow = openReelWindow();
+    const reelWindow = openNewTab();
     reelWindow.document.title = `${userName}'s story`;
     let reelData;
     try {
@@ -592,7 +576,7 @@
   async function openHighlight(event) {
     if (requestPending) return;
     requestPending = true;
-    const reelWindow = openReelWindow();
+    const reelWindow = openNewTab();
     const highlightDiv = event.target.closest("._3D7yK");
     const highlightName = highlightDiv.querySelector(".eXle2").innerText;
     reelWindow.document.title = `"${highlightName}" highlight`;
@@ -717,7 +701,7 @@
   }
 
   async function openStoriesTimeline() {
-    const timelineWindow = openReelWindow();
+    const timelineWindow = openNewTab();
     timelineWindow.document.title = "Stories Timeline";
     const trayData = await fetchWithClaim(
       "https://i.instagram.com/api/v1/feed/reels_tray/",
