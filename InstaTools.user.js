@@ -4,8 +4,8 @@
 // @version      0.1.16
 // @description  instagram enhancements for power users
 // @author       Timsonrobl
-// @updateURL    https://gist.github.com/Timsonrobl/21c0bccaf43965dca74deb44dbe49f60/raw/InstaTools.user.js
-// @downloadURL  https://gist.github.com/Timsonrobl/21c0bccaf43965dca74deb44dbe49f60/raw/InstaTools.user.js
+// @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
+// @downloadURL  https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
 // @match        *://*.instagram.com/*
 // @run-at       document-start
 // @grant        GM.getValue
