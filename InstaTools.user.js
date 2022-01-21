@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.1.16
+// @version      0.1.17
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -240,6 +240,12 @@
   }
 
   async function openPostVideo(event) {
+    // a hack to make Chrome focus new tab on middle mouse event
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 0);
+    });
     const videoElement =
       event.target.parentElement.querySelector(".tWeCl, .Q9bIO");
     if (!videoElement) return;
@@ -251,38 +257,28 @@
         ?.querySelector(".c-Yi7")?.href;
       if (!postUrl) return;
       let postData;
-      // a hack to make Chrome focus new tab on middle mouse event
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve();
-        }, 0);
-      });
       const playerWindow = openNewTab();
       if (dataCache.posts[postUrl]) {
         postData = dataCache.posts[postUrl];
       } else {
         postData = await fetchJSON(`${postUrl}?__a=1`, 1);
-        if (!postData) {
-          return;
-        }
+        if (!postData) return;
         dataCache.posts[postUrl] = postData;
       }
-      const sideCar =
-        postData.graphql.shortcode_media?.edge_sidecar_to_children;
-      if (sideCar) {
+      const carouselMedia = postData.items?.[0]?.carousel_media;
+      if (carouselMedia) {
         const posterFileName = videoElement.poster.match(/^([^?]*)/)[1];
         if (!posterFileName) return;
-        const currentVideo = sideCar.edges.find(
-          (edge) =>
-            edge.node.is_video &&
-            edge.node.display_url.startsWith(posterFileName),
+        const currentVideo = carouselMedia.find(
+          (item) =>
+            item?.media_type === 2 &&
+            item?.image_versions2.candidates?.[0]?.url.startsWith(
+              posterFileName,
+            ),
         );
-        openVideoPlayer(currentVideo.node.video_url, playerWindow);
+        openVideoPlayer(currentVideo?.video_versions?.[0]?.url, playerWindow);
       } else if (postData.graphql.shortcode_media?.is_video) {
-        openVideoPlayer(
-          postData.graphql.shortcode_media?.video_url,
-          playerWindow,
-        );
+        openVideoPlayer(postData.items[0].video_versions[0].url, playerWindow);
       }
     }
   }
