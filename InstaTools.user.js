@@ -199,7 +199,33 @@
     requestPending = false;
   }
 
-  async function openVideoPlayer(URL, playerWindow = openNewTab()) {
+  async function openVideoPlayer(video, playerWindow = openNewTab()) {
+    let videoURL;
+    if (typeof video === "string") {
+      videoURL = video;
+    } else {
+      const videoVersions = video.video_versions;
+      let selectedVideoVersion = 0;
+      while (
+        videoVersions[selectedVideoVersion].width ===
+        videoVersions?.[selectedVideoVersion + 1]?.width
+      ) {
+        selectedVideoVersion += 1;
+      }
+      if (video?.video_dash_manifest) {
+        const manifest = new DOMParser().parseFromString(
+          video.video_dash_manifest,
+          "text/xml",
+        );
+        console.log(manifest);
+        const AdaptationSet = manifest.getElementsByTagName("AdaptationSet")[0];
+        const dashWidth = parseInt(AdaptationSet.getAttribute("width"), 10);
+        if (dashWidth > videoVersions[selectedVideoVersion].width) {
+          console.log("Has better version!");
+        }
+      }
+      videoURL = videoVersions?.[selectedVideoVersion]?.url;
+    }
     playerWindow.container.textContent = "";
     playerWindow.document.title = "Video";
     const videoElement = createElementPlus({
@@ -210,9 +236,9 @@
     });
     playerWindow.document.body.style.textAlign = "center";
     playerWindow.document.body.style.margin = 0;
-    const video = await fetchWithRetry(URL, 2);
-    if (!video) return;
-    const videoBlob = await video.blob();
+    const videoResponse = await fetchWithRetry(videoURL, 2);
+    if (!videoResponse) return;
+    const videoBlob = await videoResponse.blob();
     const blobSrc = window.URL.createObjectURL(videoBlob);
     videoElement.src = blobSrc;
     videoElement.addEventListener("durationchange", () => {
@@ -223,7 +249,7 @@
     const a = createElementPlus({
       tagName: "a",
       href: blobSrc,
-      download: URL.split("/").pop().split("?")[0],
+      download: videoURL.split("/").pop().split("?")[0],
       innerText: "Save (ctrl+s)",
       className: "video-dl-link",
       onclick: () => {
@@ -249,9 +275,11 @@
     const videoElement =
       event.target.parentElement.querySelector(".tWeCl, .Q9bIO");
     if (!videoElement) return;
-    if (!videoElement.src.startsWith("b")) {
-      openVideoPlayer(videoElement.src);
-    } else {
+
+    // if (!videoElement.src.startsWith("b")) {
+    //   openVideoPlayer(videoElement.src); // !!
+    // } else
+    {
       const postUrl = event.target
         .closest(".ePUX4")
         ?.querySelector(".c-Yi7")?.href;
@@ -265,21 +293,22 @@
         if (!postData) return;
         dataCache.posts[postUrl] = postData;
       }
+      let videoItem;
       const carouselMedia = postData.items?.[0]?.carousel_media;
       if (carouselMedia) {
         const posterFileName = videoElement.poster.match(/^([^?]*)/)[1];
         if (!posterFileName) return;
-        const currentVideo = carouselMedia.find(
+        videoItem = carouselMedia.find(
           (item) =>
             item?.media_type === 2 &&
             item?.image_versions2.candidates?.[0]?.url.startsWith(
               posterFileName,
             ),
         );
-        openVideoPlayer(currentVideo?.video_versions?.[0]?.url, playerWindow);
       } else {
-        openVideoPlayer(postData.items[0].video_versions[0].url, playerWindow);
+        videoItem = postData.items[0];
       }
+      openVideoPlayer(videoItem, playerWindow);
     }
   }
 
@@ -337,7 +366,7 @@
       a.href = reelItem.image_versions2.candidates[0].url;
     } else {
       img.addEventListener("click", () => {
-        openVideoPlayer(reelItem.video_versions[0].url);
+        openVideoPlayer(reelItem);
       });
       const vidMark = createElementPlus({
         tagName: "div",
