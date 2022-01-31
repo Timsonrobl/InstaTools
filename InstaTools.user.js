@@ -816,6 +816,21 @@
       },
     },
     {
+      name: "Search panel avatar",
+      selector: "_4EzTm>.h5uC0, _4EzTm>.h5uC0 *",
+      handler(event) {
+        event.preventDefault();
+        const userName = event.target
+          .closest(".yC0tu")
+          .nextSibling?.querySelector(".uL8Hv")?.innerText;
+        if (!userName) return;
+        if (requestPending) return;
+        requestPending = true;
+        openUserStory(userName);
+        requestPending = false;
+      },
+    },
+    {
       name: "Profile page avatar",
       selector: ".eC4Dz, .eC4Dz *",
       handler(event) {
