@@ -34,14 +34,14 @@
 
   // ==================== Utility functions ====================
 
-  function debugLog(message) {
+  function debugLog(...messages) {
     // eslint-disable-next-line no-console
-    console.debug(message);
+    console.debug(...messages);
   }
 
-  function errorLog(message) {
+  function errorLog(...messages) {
     // eslint-disable-next-line no-console
-    console.error(message);
+    console.error(...messages);
   }
 
   function fetchWithRetry(url, retries = 0, options = {}) {
