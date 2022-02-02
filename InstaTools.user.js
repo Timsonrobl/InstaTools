@@ -78,6 +78,10 @@
     });
   }
 
+  function getUrlFileName(URL) {
+    return URL.split("/").pop().split("?")[0];
+  }
+
   // ==================== Script functions ====================
 
   function notificationAlert(text) {
@@ -199,33 +203,91 @@
     requestPending = false;
   }
 
-  async function openVideoPlayer(video, playerWindow = openNewTab()) {
-    let videoURL;
-    if (typeof video === "string") {
-      videoURL = video;
+  function parseDashManifest(manifestString) {
+    const manifest = new DOMParser().parseFromString(
+      manifestString,
+      "text/xml",
+    );
+    debugLog(manifest);
+    const adaptationSet = manifest.getElementsByTagName("AdaptationSet")[0];
+    const width = parseInt(
+      adaptationSet.getAttribute("maxWidth") ||
+        adaptationSet.getAttribute("width"),
+      10,
+    );
+    const dashFrameRateString =
+      adaptationSet.getAttribute("maxFrameRate") ||
+      adaptationSet.getAttribute("frameRate");
+    let frameRate;
+    if (Number.isNaN(Number(dashFrameRateString))) {
+      const dashFrameRateFraction = dashFrameRateString.split("/");
+      frameRate =
+        Number(dashFrameRateFraction[0]) / Number(dashFrameRateFraction[1]);
     } else {
-      const videoVersions = video.video_versions;
-      let selectedVideoVersion = 0;
-      while (
-        videoVersions[selectedVideoVersion].width ===
-        videoVersions?.[selectedVideoVersion + 1]?.width
-      ) {
-        selectedVideoVersion += 1;
-      }
-      if (video?.video_dash_manifest) {
-        const manifest = new DOMParser().parseFromString(
-          video.video_dash_manifest,
-          "text/xml",
-        );
-        console.log(manifest);
-        const AdaptationSet = manifest.getElementsByTagName("AdaptationSet")[0];
-        const dashWidth = parseInt(AdaptationSet.getAttribute("width"), 10);
-        if (dashWidth > videoVersions[selectedVideoVersion].width) {
-          console.log("Has better version!");
-        }
-      }
-      videoURL = videoVersions?.[selectedVideoVersion]?.url;
+      frameRate = Number(dashFrameRateString);
     }
+    const videoRepresentations = [...adaptationSet.children];
+    videoRepresentations.sort(
+      (a, b) =>
+        Number(a.getAttribute("bandwidth")) -
+        Number(b.getAttribute("bandwidth")),
+    );
+    const maxBandwidthRepresentation = videoRepresentations.pop();
+    return {
+      width,
+      frameRate,
+      bandwidth:
+        Number(maxBandwidthRepresentation.getAttribute("bandwidth")) / 1024,
+      videoURL: maxBandwidthRepresentation.firstElementChild.textContent,
+    };
+  }
+
+  function createDashDownloadLink(dashVideoParams, alternativeBandwidth) {
+    const link = createElementPlus({
+      tagName: "a",
+      innerText: `Download better quality video (${Math.floor(
+        dashVideoParams.bandwidth,
+      )} Kb/s, +${Math.floor(
+        (dashVideoParams.bandwidth / alternativeBandwidth - 1) * 100,
+      )}%)`,
+      href: "#",
+      className: "video-dl-link video-dl-link_top",
+    });
+    link.addEventListener(
+      "click",
+      async (event) => {
+        event.preventDefault();
+        link.innerText = "Downloading...";
+        const dashResponse = await fetchWithRetry(dashVideoParams.videoURL, 2);
+        if (!dashResponse) return;
+        const dashVideoBlob = await dashResponse.blob();
+        link.href = window.URL.createObjectURL(dashVideoBlob);
+        link.download = getUrlFileName(dashVideoParams.videoURL);
+        link.click();
+        link.remove();
+      },
+      { once: true },
+    );
+    return link;
+  }
+
+  async function openVideoPlayer(video, playerWindow = openNewTab()) {
+    const videoVersions = video.video_versions;
+    let selectedVideoVersion = 0;
+    while (
+      videoVersions[selectedVideoVersion].width ===
+      videoVersions?.[selectedVideoVersion + 1]?.width
+    ) {
+      selectedVideoVersion += 1;
+    }
+    const videoURL = videoVersions?.[selectedVideoVersion]?.url;
+    const videoResponse = await fetchWithRetry(videoURL, 2);
+    if (!videoResponse) return;
+    const videoBlob = await videoResponse.blob();
+    const fileBandwidthEstimate =
+      (videoBlob.size * 8) / 1024 / video.video_duration - 90;
+    debugLog("File video bandwidth est.:", fileBandwidthEstimate);
+
     playerWindow.container.textContent = "";
     playerWindow.document.title = "Video";
     const videoElement = createElementPlus({
@@ -236,9 +298,19 @@
     });
     playerWindow.document.body.style.textAlign = "center";
     playerWindow.document.body.style.margin = 0;
-    const videoResponse = await fetchWithRetry(videoURL, 2);
-    if (!videoResponse) return;
-    const videoBlob = await videoResponse.blob();
+
+    if (video?.video_dash_manifest) {
+      const dashVideo = parseDashManifest(video.video_dash_manifest);
+      debugLog("Dash bandwidth:", dashVideo.bandwidth);
+      if (dashVideo.bandwidth > fileBandwidthEstimate * 1.1) {
+        const downloadLink = createDashDownloadLink(
+          dashVideo,
+          fileBandwidthEstimate,
+        );
+        playerWindow.document.body.appendChild(downloadLink);
+      }
+    }
+
     const blobSrc = window.URL.createObjectURL(videoBlob);
     videoElement.src = blobSrc;
     videoElement.addEventListener("durationchange", () => {
@@ -249,20 +321,24 @@
     const a = createElementPlus({
       tagName: "a",
       href: blobSrc,
-      download: videoURL.split("/").pop().split("?")[0],
+      download: getUrlFileName(videoURL),
       innerText: "Save (ctrl+s)",
-      className: "video-dl-link",
+      className: "video-dl-link video-dl-link_bottom",
       onclick: () => {
         a.remove();
       },
     });
     playerWindow.document.body.appendChild(videoElement);
     playerWindow.document.body.appendChild(a);
-    playerWindow.document.addEventListener("keydown", (event) => {
-      if (event.ctrlKey && event.code === "KeyS") {
-        a.click();
-      }
-    });
+    playerWindow.document.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.ctrlKey && event.code === "KeyS") {
+          a.click();
+        }
+      },
+      { once: true },
+    );
   }
 
   async function openPostVideo(event) {
@@ -512,9 +588,16 @@
       .video-dl-link {
         color: white;
         position: absolute;
-        right: 100px;
-        bottom: 100px;
         font-size: 30px;
+      }
+      .video-dl-link_top {
+        top: 50px;
+        max-width: 300px;
+        right: 20px;
+      }
+      .video-dl-link_bottom {
+        bottom: 100px;
+        right: 100px;
       }
       .name-plaque {
         position: absolute;
