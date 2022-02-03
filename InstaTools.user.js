@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.1.19
+// @version      0.1.20
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -900,7 +900,7 @@
     },
     {
       name: "Search panel avatar",
-      selector: "_4EzTm>.h5uC0, _4EzTm>.h5uC0 *",
+      selector: "._4EzTm > .h5uC0, ._4EzTm > .h5uC0 *",
       handler(event) {
         event.preventDefault();
         const userName = event.target
