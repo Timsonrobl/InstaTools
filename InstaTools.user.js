@@ -847,7 +847,7 @@
   // ==================== Main ====================
 
   const postImageSelector = ".ZyFrc ._9AhH0";
-  const clickEventHandlers = [
+  const anyClickEventHandlers = [
     {
       name: "Post image",
       selector: postImageSelector,
@@ -943,13 +943,21 @@
     },
   ];
 
+  const middleClickEventHandlers = [
+    {
+      name: "Post video",
+      selector: ".fXIG0, .tWeCl, .Q9bIO",
+      handler: openPostVideo,
+    },
+  ];
+
   document.addEventListener(
     "click",
     (event) => {
       debugLog(
         `Click at node ${event.target.tagName}: "${event.target.className}"`,
       );
-      const selectedEntry = clickEventHandlers.find((entry) =>
+      const selectedEntry = anyClickEventHandlers.find((entry) =>
         event.target.matches(entry.selector),
       );
       if (!selectedEntry) return;
@@ -960,39 +968,37 @@
     true,
   );
 
-  const timelineVideoSelector = ".fXIG0, .tWeCl, .Q9bIO";
   document.addEventListener(
     "auxclick",
-    async (event) => {
-      if (event.button !== 1) return;
-      // ==================== Post video ====================
-
-      if (event.target.matches(timelineVideoSelector)) {
-        debugLog(`Post video (${timelineVideoSelector}) middle-clicked`);
-        event.stopImmediatePropagation();
-        event.preventDefault();
-        openPostVideo(event);
-      } else if (event.target.matches(postImageSelector)) {
-        debugLog(`Post image (${postImageSelector}) middle-clicked`);
-        event.stopImmediatePropagation();
-        event.preventDefault();
-        window.open(
-          event.target.parentElement.firstChild.firstChild.src,
-          "_blank",
+    (event) => {
+      debugLog(
+        `Middle click at node ${event.target.tagName}: "${event.target.className}"`,
+      );
+      const selectedEntry =
+        anyClickEventHandlers.find((entry) =>
+          event.target.matches(entry.selector),
+        ) ||
+        middleClickEventHandlers.find((entry) =>
+          event.target.matches(entry.selector),
         );
-      }
+      if (!selectedEntry) return;
+      debugLog(`${selectedEntry.name} middle clicked`);
+      event.stopImmediatePropagation();
+      selectedEntry.handler(event);
     },
     true,
   );
+
+  const scrollCancelSelector = [
+    ...anyClickEventHandlers.map((entry) => entry.selector),
+    ...middleClickEventHandlers.map((entry) => entry.selector),
+  ].join(", ");
+
+  //  Prevent middle mouse scroll
   document.addEventListener(
     "mousedown",
     (event) => {
-      //  Prevent middle mouse scroll
-      if (
-        event.button === 1 &&
-        (event.target.matches(timelineVideoSelector) ||
-          event.target.matches(postImageSelector))
-      ) {
+      if (event.button === 1 && event.target.matches(scrollCancelSelector)) {
         event.preventDefault();
       }
     },
