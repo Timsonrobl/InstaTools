@@ -43,19 +43,24 @@
     console.error(...messages);
   }
 
-  function fetchWithRetry(url, retries = 0, options = {}) {
-    return fetch(url, options)
-      .then((response) => {
-        if (response.ok) {
-          return response;
-        }
-        const permanentErrors = [404, 410];
-        if (retries > 0 && !permanentErrors.includes(response.status)) {
-          return fetchWithRetry(url, retries - 1, options);
-        }
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function fetchWithRetry(url, retries = 0, options = {}) {
+    const permanentErrors = [404, 410];
+    let tryCount = 0;
+    let response;
+    while (true) {
+      response = await fetch(url, options);
+      if (response.ok) return response;
+      tryCount += 1;
+      if (retries >= tryCount && !permanentErrors.includes(response.status)) {
+        await sleep(2000);
+      } else {
         throw new Error(response.status);
-      })
-      .catch((error) => debugLog(error.message));
+      }
+    }
   }
 
   function compareNumProperty(propertyName) {
@@ -188,6 +193,7 @@
   }
 
   async function openHdAvatar(userName) {
+    const newTab = openNewTab();
     let userInfo;
     try {
       const userId = await getUserId(userName);
@@ -195,7 +201,7 @@
     } catch (error) {
       return;
     }
-    window.open(userInfo.user.hd_profile_pic_url_info.url, "_blank");
+    newTab.location.href = userInfo.user.hd_profile_pic_url_info.url;
   }
 
   function parseDashManifest(manifestString) {

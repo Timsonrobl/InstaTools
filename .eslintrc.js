@@ -14,5 +14,7 @@ module.exports = {
     "no-use-before-define": ["error", { functions: false }],
     "prefer-destructuring": "off",
     "no-param-reassign": ["error", { props: false }],
+    "no-await-in-loop": "off",
+    "no-constant-condition": ["error", { checkLoops: false }],
   },
 };
