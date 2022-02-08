@@ -23,7 +23,6 @@
     highlights: {},
     posts: {},
   };
-  let requestPending = false;
   const csrfToken = document.cookie
     .split("; ")
     .find((row) => row.startsWith("csrftoken="))
@@ -189,18 +188,14 @@
   }
 
   async function openHdAvatar(userName) {
-    if (requestPending) return;
-    requestPending = true;
     let userInfo;
     try {
       const userId = await getUserId(userName);
       userInfo = await getUserInfo(userId);
     } catch (error) {
-      requestPending = false;
       return;
     }
     window.open(userInfo.user.hd_profile_pic_url_info.url, "_blank");
-    requestPending = false;
   }
 
   function parseDashManifest(manifestString) {
@@ -682,8 +677,6 @@
   }
 
   async function openHighlight(event) {
-    if (requestPending) return;
-    requestPending = true;
     const reelWindow = openNewTab();
     const highlightDiv = event.target.closest("._3D7yK");
     const highlightName = highlightDiv.querySelector(".T0kll").innerText;
@@ -697,7 +690,6 @@
         const userId = await getUserId(userName);
         userHighlights = await getUserHighlights(userId);
       } catch {
-        requestPending = false;
         return;
       }
       dataCache.highlights[userName] = userHighlights;
@@ -714,7 +706,6 @@
     const reelData = await getReels([`highlight%3A${highlightData.node.id}`]);
     if (!reelData) return;
     renderChronologicalReel(reelData, reelWindow.container);
-    requestPending = false;
   }
 
   async function renderTimelinePage(
@@ -866,14 +857,11 @@
     {
       name: "Stories tray avatar",
       selector: ".QN629, .QN629 *",
-      handler: (event) => {
-        if (requestPending) return;
-        requestPending = true;
+      async handler(event) {
         const trayName = event.target
           .closest(".Fd_fQ")
           .querySelector(".eebAO").innerText;
-        openUserStory(trayName);
-        requestPending = false;
+        await openUserStory(trayName);
       },
     },
     {
@@ -886,54 +874,45 @@
     {
       name: "Small avatar",
       selector: ".pZp3x, .pZp3x *",
-      handler(event) {
+      async handler(event) {
         event.preventDefault();
         const userName = event.target
           .closest(".pZp3x")
           .nextSibling?.querySelector(".ZIAjV")?.innerText;
         if (!userName) return;
-        if (requestPending) return;
-        requestPending = true;
-        openUserStory(userName);
-        requestPending = false;
+        await openUserStory(userName);
       },
     },
     {
       name: "Search panel avatar",
       selector: "._4EzTm > .h5uC0, ._4EzTm > .h5uC0 *",
-      handler(event) {
+      async handler(event) {
         event.preventDefault();
         const userName = event.target
           .closest(".yC0tu")
           .nextSibling?.querySelector(".uL8Hv")?.innerText;
         if (!userName) return;
-        if (requestPending) return;
-        requestPending = true;
-        openUserStory(userName);
-        requestPending = false;
+        await openUserStory(userName);
       },
     },
     {
       name: "Profile page avatar",
       selector: ".eC4Dz, .eC4Dz *",
-      handler(event) {
+      async handler(event) {
         event.preventDefault();
         const userName = event.target
           .closest(".eC4Dz")
           .nextSibling?.querySelector(".fKFbl")?.innerText;
         if (!userName) return;
-        openHdAvatar(userName);
+        await openHdAvatar(userName);
       },
     },
     {
       name: "Profile page username",
       selector: ".fKFbl",
-      handler(event) {
-        if (requestPending) return;
-        requestPending = true;
+      async handler(event) {
         const userName = event.target.innerText;
-        openUserStory(userName);
-        requestPending = false;
+        await openUserStory(userName);
       },
     },
     {
@@ -951,9 +930,11 @@
     },
   ];
 
+  let handlerLock = false;
+
   document.addEventListener(
     "click",
-    (event) => {
+    async (event) => {
       debugLog(
         `Click at node ${event.target.tagName}: "${event.target.className}"`,
       );
@@ -963,14 +944,18 @@
       if (!selectedEntry) return;
       debugLog(`${selectedEntry.name} clicked`);
       event.stopImmediatePropagation();
-      selectedEntry.handler(event);
+      if (!handlerLock) {
+        handlerLock = true;
+        await selectedEntry.handler(event);
+        handlerLock = false;
+      }
     },
     true,
   );
 
   document.addEventListener(
     "auxclick",
-    (event) => {
+    async (event) => {
       debugLog(
         `Middle click at node ${event.target.tagName}: "${event.target.className}"`,
       );
@@ -984,7 +969,11 @@
       if (!selectedEntry) return;
       debugLog(`${selectedEntry.name} middle clicked`);
       event.stopImmediatePropagation();
-      selectedEntry.handler(event);
+      if (!handlerLock) {
+        handlerLock = true;
+        await selectedEntry.handler(event);
+        handlerLock = false;
+      }
     },
     true,
   );
