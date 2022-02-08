@@ -686,7 +686,7 @@
     requestPending = true;
     const reelWindow = openNewTab();
     const highlightDiv = event.target.closest("._3D7yK");
-    const highlightName = highlightDiv.querySelector(".eXle2").innerText;
+    const highlightName = highlightDiv.querySelector(".T0kll").innerText;
     reelWindow.document.title = `"${highlightName}" highlight`;
     const userName = window.location.pathname.slice(1, -1);
     let userHighlights;
