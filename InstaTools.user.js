@@ -346,6 +346,20 @@
     );
   }
 
+  async function getPostData(postElement) {
+    const postUrl = postElement
+      .closest(".ePUX4")
+      ?.querySelector(".c-Yi7")?.href;
+    if (!postUrl) return null;
+    if (dataCache.posts[postUrl]) {
+      return dataCache.posts[postUrl];
+    }
+    const postData = await fetchJSON(`${postUrl}?__a=1`, 1);
+    if (!postData) return null;
+    dataCache.posts[postUrl] = postData;
+    return postData;
+  }
+
   async function openPostVideo(event) {
     // a hack to make Chrome focus new tab on middle mouse event
     await new Promise((resolve) => {
@@ -353,43 +367,52 @@
         resolve();
       }, 0);
     });
+    const playerWindow = openNewTab();
     const videoElement =
       event.target.parentElement.querySelector(".tWeCl, .Q9bIO");
     if (!videoElement) return;
+    const postData = await getPostData(event.target);
+    let videoItem;
+    const carouselMedia = postData.items?.[0]?.carousel_media;
+    if (carouselMedia) {
+      const posterFileName = videoElement.poster.match(/^([^?]*)/)[1];
+      if (!posterFileName) return;
+      videoItem = carouselMedia.find(
+        (item) =>
+          item?.media_type === 2 &&
+          item?.image_versions2.candidates?.[0]?.url.startsWith(posterFileName),
+      );
+    } else {
+      videoItem = postData.items[0];
+    }
+    openVideoPlayer(videoItem, playerWindow);
+  }
 
-    // if (!videoElement.src.startsWith("b")) {
-    //   openVideoPlayer(videoElement.src); // !!
-    // } else
-    {
-      const postUrl = event.target
-        .closest(".ePUX4")
-        ?.querySelector(".c-Yi7")?.href;
-      if (!postUrl) return;
-      let postData;
-      const playerWindow = openNewTab();
-      if (dataCache.posts[postUrl]) {
-        postData = dataCache.posts[postUrl];
-      } else {
-        postData = await fetchJSON(`${postUrl}?__a=1`, 1);
-        if (!postData) return;
-        dataCache.posts[postUrl] = postData;
-      }
-      let videoItem;
+  async function openPostImage(event) {
+    const srcURL = event.target.parentElement.firstChild.firstChild.src;
+    if (!/\d{1,5}x\d{1,5}/.test(srcURL)) {
+      window.open(
+        event.target.parentElement.firstChild.firstChild.src,
+        "_blank",
+      );
+    } else {
+      const placeholderTab = openNewTab();
+      const postData = await getPostData(event.target);
+      let photoItem;
       const carouselMedia = postData.items?.[0]?.carousel_media;
       if (carouselMedia) {
-        const posterFileName = videoElement.poster.match(/^([^?]*)/)[1];
-        if (!posterFileName) return;
-        videoItem = carouselMedia.find(
+        const photoFileName = getUrlFileName(srcURL);
+        if (!photoFileName) return;
+        photoItem = carouselMedia.find(
           (item) =>
-            item?.media_type === 2 &&
-            item?.image_versions2.candidates?.[0]?.url.startsWith(
-              posterFileName,
-            ),
+            item?.media_type === 1 &&
+            item?.image_versions2.candidates?.[0]?.url.includes(photoFileName),
         );
       } else {
-        videoItem = postData.items[0];
+        photoItem = postData.items[0];
       }
-      openVideoPlayer(videoItem, playerWindow);
+      placeholderTab.location.href =
+        photoItem.image_versions2.candidates?.[0]?.url;
     }
   }
 
@@ -852,12 +875,7 @@
     {
       name: "Post image",
       selector: postImageSelector,
-      handler(event) {
-        window.open(
-          event.target.parentElement.firstChild.firstChild.src,
-          "_blank",
-        );
-      },
+      handler: openPostImage,
     },
     {
       name: "Highlight item",
