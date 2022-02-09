@@ -52,7 +52,11 @@
     let tryCount = 0;
     let response;
     while (true) {
-      response = await fetch(url, options);
+      try {
+        response = await fetch(url, options);
+      } catch (error) {
+        errorLog(error);
+      }
       if (response.ok) return response;
       tryCount += 1;
       if (retries >= tryCount && !permanentErrors.includes(response.status)) {
