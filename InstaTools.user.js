@@ -966,6 +966,7 @@
   document.addEventListener(
     "auxclick",
     async (event) => {
+      if (event.button !== 1) return;
       debugLog(
         `Middle click at node ${event.target.tagName}: "${event.target.className}"`,
       );
