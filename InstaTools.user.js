@@ -390,7 +390,7 @@
 
   async function openPostImage(event) {
     const srcURL = event.target.parentElement.firstChild.firstChild.src;
-    if (!/\d{1,5}x\d{1,5}/.test(srcURL)) {
+    if (!/\d{3,4}x\d{3,4}\//.test(srcURL)) {
       window.open(
         event.target.parentElement.firstChild.firstChild.src,
         "_blank",
