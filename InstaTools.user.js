@@ -527,10 +527,14 @@
         className: "next-page-button",
         textContent: `Load more (${reelItems.length - cursor - pageSize}) →`,
       });
-      nextPageButton.addEventListener("click", () => {
-        renderReel(reelItems, container, cursor + pageSize);
-        nextPageButton.remove();
-      });
+      nextPageButton.addEventListener(
+        "click",
+        () => {
+          nextPageButton.remove();
+          renderReel(reelItems, container, cursor + pageSize, nextPageButton);
+        },
+        { once: true },
+      );
       fragment.appendChild(nextPageButton);
     }
     const firstItem = fragment.firstElementChild;
