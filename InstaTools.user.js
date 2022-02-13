@@ -525,7 +525,7 @@
       const nextPageButton = createElementPlus({
         tagName: "button",
         className: "next-page-button",
-        textContent: `Load ${reelItems.length - cursor - pageSize} more→`,
+        textContent: `Load more (${reelItems.length - cursor - pageSize}) →`,
       });
       nextPageButton.addEventListener("click", () => {
         renderReel(reelItems, container, cursor + pageSize);
