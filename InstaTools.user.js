@@ -525,7 +525,7 @@
       const nextPageButton = createElementPlus({
         tagName: "button",
         className: "next-page-button",
-        textContent: `${reelItems.length - cursor - pageSize} more→`,
+        textContent: `Load ${reelItems.length - cursor - pageSize} more→`,
       });
       nextPageButton.addEventListener("click", () => {
         renderReel(reelItems, container, cursor + pageSize);
@@ -607,11 +607,10 @@
         border-color: blue;
       }
       .next-page-button {
-        position: absolute;
-        right: 0;
-        bottom: 100px;
-        padding: 5px;
-        font-size: large;
+        font-size: x-large;
+        width: 80%;
+        height: 50px;
+        margin: 7px;
       }
       .video-dl-link {
         color: white;
@@ -748,6 +747,7 @@
     lastSeenFound = false,
     cursor = 0,
     previousReelItems = [],
+    previousPageButton,
   ) {
     const reelBatchSize = 9;
     const fragment = document.createDocumentFragment();
@@ -756,6 +756,7 @@
     const reelIds = page.map((trayItem) => trayItem.id);
     const reelItems = [...previousReelItems];
     const reelsData = await getReels(reelIds);
+    if (previousPageButton) previousPageButton.remove();
     if (reelsData)
       reelsData.reels_media.forEach((reel) => {
         reel.items.forEach((reelItem) => {
@@ -808,16 +809,17 @@
       });
       nextPageButton.addEventListener(
         "click",
-        () => {
-          renderTimelinePage(
+        async () => {
+          nextPageButton.textContent = "Loading...";
+          await renderTimelinePage(
             tray,
             container,
             lastSeenTime,
             newLastSeenFound,
             cursor + reelBatchSize,
             leftoverItems,
+            nextPageButton,
           );
-          nextPageButton.remove();
         },
         { once: true },
       );
