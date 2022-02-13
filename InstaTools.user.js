@@ -335,15 +335,13 @@
     });
     playerWindow.document.body.appendChild(videoElement);
     playerWindow.document.body.appendChild(a);
-    playerWindow.document.addEventListener(
-      "keydown",
-      (event) => {
-        if (event.ctrlKey && event.code === "KeyS") {
-          a.click();
-        }
-      },
-      { once: true },
-    );
+    const clickLink = (event) => {
+      if (event.ctrlKey && event.code === "KeyS") {
+        a.click();
+        playerWindow.document.removeEventListener("keydown", clickLink);
+      }
+    };
+    playerWindow.document.addEventListener("keydown", clickLink);
   }
 
   async function getPostData(postElement) {
