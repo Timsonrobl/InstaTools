@@ -809,9 +809,9 @@
       });
       nextPageButton.addEventListener(
         "click",
-        async () => {
+        () => {
           nextPageButton.textContent = "Loading...";
-          await renderTimelinePage(
+          renderTimelinePage(
             tray,
             container,
             lastSeenTime,
