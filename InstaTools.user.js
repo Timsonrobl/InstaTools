@@ -610,7 +610,7 @@
         font-size: x-large;
         width: 80%;
         height: 50px;
-        margin: 7px;
+        margin: 7px 9%;
       }
       .video-dl-link {
         color: white;
