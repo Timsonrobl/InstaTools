@@ -278,14 +278,21 @@
 
   async function openVideoPlayer(video, playerWindow = openNewTab()) {
     const videoVersions = video.video_versions;
-    let selectedVideoVersion = 0;
-    while (
-      videoVersions[selectedVideoVersion].width ===
-      videoVersions?.[selectedVideoVersion + 1]?.width
-    ) {
-      selectedVideoVersion += 1;
+    let videoURL;
+    if (videoVersions) {
+      // new api branch
+      let selectedVideoVersion = 0;
+      while (
+        videoVersions[selectedVideoVersion].width ===
+        videoVersions?.[selectedVideoVersion + 1]?.width
+      ) {
+        selectedVideoVersion += 1;
+      }
+      videoURL = videoVersions?.[selectedVideoVersion]?.url;
+    } else {
+      // old api branch
+      videoURL = video.video_url;
     }
-    const videoURL = videoVersions?.[selectedVideoVersion]?.url;
     const videoResponse = await fetchWithRetry(videoURL, 2);
     if (!videoResponse) return;
     const videoBlob = await videoResponse.blob();
@@ -371,24 +378,43 @@
     if (!videoElement) return;
     const postData = await getPostData(event.target);
     let videoItem;
-    const carouselMedia = postData.items?.[0]?.carousel_media;
-    if (carouselMedia) {
-      const posterFileName = videoElement.poster.match(/^([^?]*)/)[1];
-      if (!posterFileName) return;
-      videoItem = carouselMedia.find(
-        (item) =>
-          item?.media_type === 2 &&
-          item?.image_versions2.candidates?.[0]?.url.startsWith(posterFileName),
-      );
+    const posterFileName = getUrlFileName(videoElement.poster);
+    if (!postData?.graphql) {
+      // new api branch
+      const carouselMedia = postData.items?.[0]?.carousel_media;
+      if (carouselMedia) {
+        if (!posterFileName) return;
+        videoItem = carouselMedia.find(
+          (item) =>
+            item?.media_type === 2 &&
+            item?.image_versions2.candidates?.[0]?.url.startsWith(
+              posterFileName,
+            ),
+        );
+      } else {
+        videoItem = postData.items[0];
+      }
     } else {
-      videoItem = postData.items[0];
+      // old api branch. To be removed after complete phase out
+      const sideCar =
+        postData.graphql?.shortcode_media?.edge_sidecar_to_children;
+      if (sideCar) {
+        videoItem =
+          postData.graphql.shortcode_media.edge_sidecar_to_children.edges.find(
+            (edge) =>
+              edge.node.is_video &&
+              edge.node.display_url.includes(posterFileName),
+          ).node;
+      } else {
+        videoItem = postData.graphql.shortcode_media;
+      }
     }
     openVideoPlayer(videoItem, playerWindow);
   }
 
   async function openPostImage(event) {
     const srcURL = event.target.parentElement.firstChild.firstChild.src;
-    if (!/\d{3,4}x\d{3,4}\//.test(srcURL)) {
+    if (!/\d{3,4}x\d{3,4}[/&_]/.test(srcURL)) {
       window.open(
         event.target.parentElement.firstChild.firstChild.src,
         "_blank",
@@ -397,20 +423,30 @@
       const placeholderTab = openNewTab();
       const postData = await getPostData(event.target);
       let photoItem;
-      const carouselMedia = postData.items?.[0]?.carousel_media;
-      if (carouselMedia) {
-        const photoFileName = getUrlFileName(srcURL);
-        if (!photoFileName) return;
-        photoItem = carouselMedia.find(
-          (item) =>
-            item?.media_type === 1 &&
-            item?.image_versions2.candidates?.[0]?.url.includes(photoFileName),
-        );
+
+      const photoFileName = getUrlFileName(srcURL);
+
+      if (!postData?.graphql) {
+        // new api branch
+        const carouselMedia = postData?.items?.[0]?.carousel_media;
+        if (carouselMedia) {
+          photoItem = carouselMedia.find(
+            (item) =>
+              item?.media_type === 1 &&
+              item?.image_versions2.candidates?.[0]?.url.includes(
+                photoFileName,
+              ),
+          );
+        } else {
+          photoItem = postData.items[0];
+        }
+        placeholderTab.location.href =
+          photoItem.image_versions2.candidates?.[0]?.url;
       } else {
-        photoItem = postData.items[0];
+        // old api branch. To be removed after complete phase out
+        placeholderTab.location.href =
+          event.target.parentElement.firstChild.firstChild.src;
       }
-      placeholderTab.location.href =
-        photoItem.image_versions2.candidates?.[0]?.url;
     }
   }
 
