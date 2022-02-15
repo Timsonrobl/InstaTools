@@ -761,6 +761,7 @@
     if (previousPageButton) previousPageButton.remove();
     if (reelsData)
       reelsData.reels_media.forEach((reel) => {
+        if (reel.reel_type !== "user_reel") return;
         reel.items.forEach((reelItem) => {
           reelItem.user = reelsData.reels[reelItem.user.pk].user;
           reelItems.push(reelItem);
