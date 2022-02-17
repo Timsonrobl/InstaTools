@@ -50,14 +50,14 @@
   async function fetchWithRetry(url, retries = 0, options = {}) {
     const permanentErrors = [404, 410];
     let tryCount = 0;
-    let response;
     while (true) {
+      let response;
       try {
         response = await fetch(url, options);
       } catch (error) {
         errorLog(error);
       }
-      if (response.ok) return response;
+      if (response?.ok) return response;
       tryCount += 1;
       if (retries >= tryCount && !permanentErrors.includes(response.status)) {
         await sleep(2000);
