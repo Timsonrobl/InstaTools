@@ -59,10 +59,10 @@
       }
       if (response?.ok) return response;
       tryCount += 1;
-      if (retries >= tryCount && !permanentErrors.includes(response.status)) {
+      if (retries >= tryCount && !permanentErrors.includes(response?.status)) {
         await sleep(2000);
       } else {
-        throw new Error(response.status);
+        throw new Error(response?.status || "Failed to fetch");
       }
     }
   }
