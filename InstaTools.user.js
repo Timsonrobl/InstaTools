@@ -387,9 +387,7 @@
         videoItem = carouselMedia.find(
           (item) =>
             item?.media_type === 2 &&
-            item?.image_versions2.candidates?.[0]?.url.startsWith(
-              posterFileName,
-            ),
+            item?.image_versions2.candidates?.[0]?.url.includes(posterFileName),
         );
       } else {
         videoItem = postData.items[0];
