@@ -762,14 +762,12 @@
       }
       dataCache.highlights[userName] = userHighlights;
     }
-    const thumbnailFilename = highlightDiv
-      .querySelector(".NCYx-")
-      .src.match(/^([^?]*)/)[1];
+    const thumbnailFilename = getUrlFileName(
+      highlightDiv.querySelector(".NCYx-").src,
+    );
     const highlightData =
       userHighlights.data.user.edge_highlight_reels.edges.find((edge) =>
-        edge.node.cover_media_cropped_thumbnail.url.startsWith(
-          thumbnailFilename,
-        ),
+        edge.node.cover_media_cropped_thumbnail.url.includes(thumbnailFilename),
       );
     const reelData = await getReels([`highlight%3A${highlightData.node.id}`]);
     if (!reelData) return;
