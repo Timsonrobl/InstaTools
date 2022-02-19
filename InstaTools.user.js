@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.1.25
+// @version      0.1.26
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
