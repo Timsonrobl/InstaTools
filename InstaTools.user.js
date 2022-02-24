@@ -17,20 +17,6 @@
 /* global GM, unsafeWindow, idb */
 
 (function main() {
-  let webAppID;
-  let queryHash;
-  const dataCache = {
-    highlights: {},
-    posts: {},
-  };
-  const csrfToken = document.cookie
-    .split("; ")
-    .find((row) => row.startsWith("csrftoken="))
-    .split("=")[1];
-  if (!csrfToken) {
-    notificationAlert("No csrf token!");
-  }
-
   // ==================== Utility functions ====================
 
   function debugLog(...messages) {
@@ -90,14 +76,31 @@
     return URL.split("/").pop().split("?")[0];
   }
 
-  // ==================== Script functions ====================
-
   function notificationAlert(text) {
     GM.notification({
       title: "InstaTools Warning",
       text,
     });
   }
+
+  // ==================== Initialization ====================
+
+  let webAppID;
+  let queryHash;
+  const dataCache = {
+    highlights: {},
+    posts: {},
+  };
+
+  const csrfToken = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("csrftoken="))
+    .split("=")[1];
+  if (!csrfToken) {
+    notificationAlert("No csrf token!");
+  }
+
+  // ==================== Script functions ====================
 
   function getFetchOptions(includeCsrf = false) {
     const headers = {
@@ -137,6 +140,10 @@
 
   function fetchWithCsrf(URL) {
     return fetchJSON(URL, 1, getFetchOptions(true));
+  }
+
+  async function getUserPageJSON(username) {
+    return fetchJSON(`https://www.instagram.com/${username}/?__a=1`, 1);
   }
 
   async function getUserId(userName) {
@@ -192,8 +199,148 @@
     );
   }
 
-  async function getUserPageJSON(username) {
-    return fetchJSON(`https://www.instagram.com/${username}/?__a=1`, 1);
+  // TO-DO: make all calls synchronous
+  function openNewTab() {
+    const newTab = window.open();
+    if (!newTab) {
+      notificationAlert(
+        "Disable pop-ups blocking for instagram.com in Chrome for this to work",
+      );
+      throw new Error("PopUpBlocked");
+    }
+    const style = document.createElement("style");
+    style.innerHTML = `
+      body {
+        background-color: #222;
+      }
+      .container {
+        display: flex;
+        position: relative;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+      }
+      .video-player {
+        height: 100%;
+      }
+      .story-block {
+        position: relative;
+        text-decoration: none;
+        margin: 5px;
+        scroll-margin-top: 5px;
+        cursor: pointer;
+        animation: fadein 0.5s;
+      }
+      @keyframes fadein {
+        from {
+          opacity:0;
+        }
+        to {
+          opacity:1;
+        }
+      }
+      .story-thumbnail {
+        min-width: 300px;
+        min-height: 510px;
+        border-radius: 5px;
+      }
+      .vid-mark {
+        position: absolute;
+        bottom: 4%;
+        right: 5%;
+        width: fit-content;
+      }
+      .mention-plaque{
+        position: absolute;
+        z-index: 1;
+        box-sizing: border-box;
+        border: thick #f008;
+        border-style: dashed solid;
+        border-width: 2px;
+        color: #3330;
+        min-height: 7px;
+        margin-top: -3px;
+      }
+      .mention-plaque:hover {
+        border-color: blue;
+      }
+      .next-page-button {
+        font-size: x-large;
+        width: 80%;
+        height: 50px;
+        margin: 7px 9%;
+      }
+      .video-dl-link {
+        color: white;
+        position: absolute;
+        font-size: 30px;
+      }
+      .video-dl-link_top {
+        top: 50px;
+        max-width: 300px;
+        right: 20px;
+      }
+      .video-dl-link_bottom {
+        bottom: 100px;
+        right: 100px;
+      }
+      .name-plaque {
+        position: absolute;
+        text-decoration: none;
+        color: white;
+        background: #111;
+        width: fit-content;
+        bottom: 0;
+        left: 0;
+      }
+      .seen-divider {
+        position: relative;
+        width: 0px;
+        outline: red solid 3px;
+        height: 550px;
+        overflow: visible;
+      }
+      .timestamp-label {
+        position: absolute;
+        z-index: 1;
+        background: red;
+        top: 45%;
+        outline: red solid 3px;
+        margin-left: -32px;
+        color: white;
+        font-size: 25px;
+        font-weight: bold;
+        font-family: sans-serif;
+      }
+      .load-spinner {
+        display: inline-block;
+        margin-top: 150px;
+        width: 150px;
+        height: 150px;
+        border: 3px solid rgba(255,255,255,.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 1.5s ease-in-out infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    `;
+    newTab.document.head.appendChild(style);
+
+    const container = createElementPlus({
+      tagName: "div",
+      className: "container",
+    });
+    newTab.document.body.appendChild(container);
+    const spinner = createElementPlus({
+      tagName: "div",
+      className: "load-spinner",
+    });
+    container.appendChild(spinner);
+    newTab.container = container;
+
+    return newTab;
   }
 
   async function openHdAvatar(userName) {
@@ -575,150 +722,6 @@
       behavior: "smooth",
       block: "start",
     });
-  }
-
-  // TO-DO: make all calls synchronous
-  function openNewTab() {
-    const newTab = window.open();
-    if (!newTab) {
-      notificationAlert(
-        "Disable pop-ups blocking for instagram.com in Chrome for this to work",
-      );
-      throw new Error("PopUpBlocked");
-    }
-    const style = document.createElement("style");
-    style.innerHTML = `
-      body {
-        background-color: #222;
-      }
-      .container {
-        display: flex;
-        position: relative;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-items: center;
-      }
-      .video-player {
-        height: 100%;
-      }
-      .story-block {
-        position: relative;
-        text-decoration: none;
-        margin: 5px;
-        scroll-margin-top: 5px;
-        cursor: pointer;
-        animation: fadein 0.5s;
-      }
-      @keyframes fadein {
-        from {
-          opacity:0;
-        }
-        to {
-          opacity:1;
-        }
-      }
-      .story-thumbnail {
-        min-width: 300px;
-        min-height: 510px;
-        border-radius: 5px;
-      }
-      .vid-mark {
-        position: absolute;
-        bottom: 4%;
-        right: 5%;
-        width: fit-content;
-      }
-      .mention-plaque{
-        position: absolute;
-        z-index: 1;
-        box-sizing: border-box;
-        border: thick #f008;
-        border-style: dashed solid;
-        border-width: 2px;
-        color: #3330;
-        min-height: 7px;
-        margin-top: -3px;
-      }
-      .mention-plaque:hover {
-        border-color: blue;
-      }
-      .next-page-button {
-        font-size: x-large;
-        width: 80%;
-        height: 50px;
-        margin: 7px 9%;
-      }
-      .video-dl-link {
-        color: white;
-        position: absolute;
-        font-size: 30px;
-      }
-      .video-dl-link_top {
-        top: 50px;
-        max-width: 300px;
-        right: 20px;
-      }
-      .video-dl-link_bottom {
-        bottom: 100px;
-        right: 100px;
-      }
-      .name-plaque {
-        position: absolute;
-        text-decoration: none;
-        color: white;
-        background: #111;
-        width: fit-content;
-        bottom: 0;
-        left: 0;
-      }
-      .seen-divider {
-        position: relative;
-        width: 0px;
-        outline: red solid 3px;
-        height: 550px;
-        overflow: visible;
-      }
-      .timestamp-label {
-        position: absolute;
-        z-index: 1;
-        background: red;
-        top: 45%;
-        outline: red solid 3px;
-        margin-left: -32px;
-        color: white;
-        font-size: 25px;
-        font-weight: bold;
-        font-family: sans-serif;
-      }
-      .load-spinner {
-        display: inline-block;
-        margin-top: 150px;
-        width: 150px;
-        height: 150px;
-        border: 3px solid rgba(255,255,255,.3);
-        border-radius: 50%;
-        border-top-color: #fff;
-        animation: spin 1.5s ease-in-out infinite;
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-    `;
-    newTab.document.head.appendChild(style);
-
-    const container = createElementPlus({
-      tagName: "div",
-      className: "container",
-    });
-    newTab.document.body.appendChild(container);
-    const spinner = createElementPlus({
-      tagName: "div",
-      className: "load-spinner",
-    });
-    container.appendChild(spinner);
-    newTab.container = container;
-
-    return newTab;
   }
 
   function renderChronologicalReel(reelData, container) {
