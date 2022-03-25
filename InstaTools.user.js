@@ -659,6 +659,8 @@
       });
       a.appendChild(vidMark);
     }
+
+    // this mentions API is probably phased out, subject to removal in future:
     if (reelItem.reel_mentions) {
       reelItem.reel_mentions.forEach((mention) => {
         const mentionPlaque = createMentionPlaque(
@@ -669,6 +671,20 @@
         a.appendChild(mentionPlaque);
       });
     }
+    // this is a new version phased in instead:
+    if (reelItem.story_bloks_stickers) {
+      reelItem.story_bloks_stickers.forEach((sticker) => {
+        if (sticker.bloks_sticker.bloks_sticker_type !== "mention") return;
+        const username = sticker.bloks_sticker.sticker_data.ig_mention.username;
+        const mentionPlaque = createMentionPlaque(
+          `https://www.instagram.com/${username}/`,
+          `@${username}`,
+          sticker,
+        );
+        a.appendChild(mentionPlaque);
+      });
+    }
+
     if (reelItem.story_feed_media) {
       const mentionPlaque = createMentionPlaque(
         `https://www.instagram.com/p/${reelItem.story_feed_media[0].media_code}/`,
