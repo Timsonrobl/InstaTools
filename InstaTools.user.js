@@ -906,10 +906,10 @@
 
   const ignoredErrors = ["cancelled", "InvalidStateError", "OZ_SOURCE_BUFFER"];
   function errorHandler(error) {
-    if (error.message === "ResizeObserver loop limit exceeded") return;
-    if (ignoredErrors.includes(error.reason?.name)) return;
-    if (error.message === "Publish Timed Out") return;
-    if (error.reason.stack?.includes("https://www.instagram.com/static/")) {
+    if (error?.message === "ResizeObserver loop limit exceeded") return;
+    if (ignoredErrors.includes(error?.reason?.name)) return;
+    if (error?.message === "Publish Timed Out") return;
+    if (error?.reason?.stack?.includes("https://www.instagram.com/static/")) {
       return;
     }
     debugLog("Error intercepted!");
