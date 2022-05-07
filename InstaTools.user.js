@@ -83,10 +83,14 @@
     });
   }
 
+  function selfAndChildren(selector) {
+    return `${selector}, ${selector} *`;
+  }
+
   // ==================== Initialization ====================
 
-  let webAppID;
-  let queryHash;
+  // let webAppID;
+  // let queryHash;
   const dataCache = {
     highlights: {},
     posts: {},
@@ -102,10 +106,25 @@
 
   // ==================== Script functions ====================
 
+  function shortcodeToId(shortcode) {
+    const base64Table =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const publicShortcode = shortcode.substring(0, 11);
+    let bigIntId = 0n;
+
+    publicShortcode.split("").forEach((char) => {
+      bigIntId *= 64n;
+      bigIntId += BigInt(base64Table.indexOf(char));
+    });
+
+    return bigIntId.toString();
+  }
+
   function getFetchOptions(includeCsrf = false) {
     const headers = {
-      "x-ig-app-id": webAppID,
+      "x-ig-app-id": "936619743392459",
       "x-ig-www-claim": sessionStorage.getItem("www-claim-v2"),
+      "x-asbd-id": "198387",
     };
     if (includeCsrf) {
       headers["x-csrftoken"] = csrfToken;
@@ -142,10 +161,6 @@
     return fetchJSON(URL, 1, getFetchOptions(true));
   }
 
-  async function getUserPageJSON(username) {
-    return fetchJSON(`https://www.instagram.com/${username}/?__a=1`, 1);
-  }
-
   async function getUserId(userName) {
     const sharedDataUser =
       // eslint-disable-next-line no-underscore-dangle
@@ -167,7 +182,10 @@
       return userList[userName];
     }
 
-    return (await getUserPageJSON(userName)).graphql.user?.id;
+    const response = await fetchWithCsrf(
+      `https://i.instagram.com/api/v1/users/web_profile_info/?username=${userName}`,
+    );
+    return response.data.user.id;
   }
 
   function getUserInfo(userId) {
@@ -184,18 +202,21 @@
   }
 
   async function getUserHighlights(userId) {
-    const variables = {
-      user_id: userId,
-      include_chaining: true,
-      include_reel: true,
-      include_suggested_users: false,
-      include_logged_out_extras: false,
-      include_highlight_reels: true,
-      include_live_status: true,
-    };
-    const encodedVariables = encodeURIComponent(JSON.stringify(variables));
+    // const variables = {
+    //   user_id: userId,
+    //   include_chaining: true,
+    //   include_reel: true,
+    //   include_suggested_users: false,
+    //   include_logged_out_extras: false,
+    //   include_highlight_reels: true,
+    //   include_live_status: true,
+    // };
+    // const encodedVariables = encodeURIComponent(JSON.stringify(variables));
+    // return fetchWithCsrf(
+    //   `https://www.instagram.com/graphql/query/?query_hash=${queryHash}&variables=${encodedVariables}`,
+    // );
     return fetchWithCsrf(
-      `https://www.instagram.com/graphql/query/?query_hash=${queryHash}&variables=${encodedVariables}`,
+      `https://i.instagram.com/api/v1/highlights/${userId}/highlights_tray/`,
     );
   }
 
@@ -209,7 +230,7 @@
       throw new Error("PopUpBlocked");
     }
     const style = document.createElement("style");
-    style.innerHTML = `
+    style.innerText = `
       body {
         background-color: #222;
       }
@@ -352,7 +373,7 @@
     } catch (error) {
       return;
     }
-    newTab.location.href = userInfo.user.hd_profile_pic_url_info.url;
+    newTab.location.href = userInfo.user?.hd_profile_pic_url_info?.url;
   }
 
   function parseDashManifest(manifestString) {
@@ -500,13 +521,17 @@
 
   async function getPostData(postElement) {
     const postUrl = postElement
-      .closest(".ePUX4")
-      ?.querySelector(".c-Yi7")?.href;
+      .closest("._a045")
+      ?.querySelector("._9-kk._a6hd")?.href;
     if (!postUrl) return null;
     if (dataCache.posts[postUrl]) {
       return dataCache.posts[postUrl];
     }
-    const postData = await fetchJSON(`${postUrl}?__a=1`, 1);
+    const shortcode = postUrl.match(/\/([^/]*)\/?(?:$|\?)/)[1];
+    const mediaId = shortcodeToId(shortcode);
+    const postData = await fetchWithCsrf(
+      `https://i.instagram.com/api/v1/media/${mediaId}/info/`,
+    );
     if (!postData) return null;
     dataCache.posts[postUrl] = postData;
     return postData;
@@ -520,12 +545,12 @@
       }, 0);
     });
     const playerWindow = openNewTab();
-    const videoElement =
-      event.target.parentElement.querySelector(".tWeCl, .Q9bIO");
+    const videoElement = event.target.parentElement.querySelector("._9zu7");
     if (!videoElement) return;
     const postData = await getPostData(event.target);
     let videoItem;
     const posterFileName = getUrlFileName(videoElement.poster);
+
     if (!postData?.graphql) {
       // new api branch
       const carouselMedia = postData.items?.[0]?.carousel_media;
@@ -765,8 +790,8 @@
 
   async function openHighlight(event) {
     const reelWindow = openNewTab();
-    const highlightDiv = event.target.closest("._3D7yK");
-    const highlightName = highlightDiv.querySelector(".T0kll").innerText;
+    const highlightDiv = event.target.closest("._9-ji");
+    const highlightName = highlightDiv.querySelector("._9_68._9_6b").innerText;
     reelWindow.document.title = `"${highlightName}" highlight`;
     const userName = window.location.pathname.slice(1, -1);
     let userHighlights;
@@ -782,13 +807,14 @@
       dataCache.highlights[userName] = userHighlights;
     }
     const thumbnailFilename = getUrlFileName(
-      highlightDiv.querySelector(".NCYx-").src,
+      highlightDiv.querySelector("._9zqd").src,
     );
-    const highlightData =
-      userHighlights.data.user.edge_highlight_reels.edges.find((edge) =>
-        edge.node.cover_media_cropped_thumbnail.url.includes(thumbnailFilename),
-      );
-    const reelData = await getReels([`highlight%3A${highlightData.node.id}`]);
+    const highlightData = userHighlights.tray.find((highlight) =>
+      highlight.cover_media.cropped_image_version.url.includes(
+        thumbnailFilename,
+      ),
+    );
+    const reelData = await getReels([highlightData.id]);
     if (!reelData) return;
     renderChronologicalReel(reelData, reelWindow.container);
   }
@@ -906,12 +932,14 @@
 
   const ignoredErrors = ["cancelled", "InvalidStateError", "OZ_SOURCE_BUFFER"];
   function errorHandler(error) {
-    if (error?.message === "ResizeObserver loop limit exceeded") return;
-    if (ignoredErrors.includes(error?.reason?.name)) return;
-    if (error?.message === "Publish Timed Out") return;
-    if (error?.reason?.stack?.includes("https://www.instagram.com/static/")) {
+    if (
+      !(error instanceof Error) ||
+      error?.message === "ResizeObserver loop limit exceeded" ||
+      ignoredErrors.includes(error?.reason?.name) ||
+      error?.message === "Publish Timed Out" ||
+      error?.reason?.stack?.includes("https://www.instagram.com/static/")
+    )
       return;
-    }
     debugLog("Error intercepted!");
     errorLog(error);
     error.stopImmediatePropagation();
@@ -926,50 +954,49 @@
 
   // ==================== Main ====================
 
-  const postImageSelector = ".ZyFrc ._9AhH0";
   const anyClickEventHandlers = [
     {
       name: "Post image",
-      selector: postImageSelector,
+      selector: "._9_90 ._9_92",
       handler: openPostImage,
     },
     {
       name: "Highlight item",
-      selector: "._3D7yK, ._3D7yK *",
+      selector: selfAndChildren("._a06f ._9-ji"),
       handler: openHighlight,
     },
     {
       name: "Stories tray avatar",
-      selector: ".QN629, .QN629 *",
+      selector: selfAndChildren("._9ztx ._9zr7"),
       async handler(event) {
         const trayName = event.target
-          .closest(".Fd_fQ")
-          .querySelector(".eebAO").innerText;
+          .closest("._9-ji")
+          .querySelector("._9__g").innerText;
         await openUserStory(trayName);
       },
     },
     {
       name: "Stories tray username",
-      selector: ".eebAO",
+      selector: "._9__g._9__h",
       handler(event) {
         window.open(`/${event.target.innerText}`, "_blank");
       },
     },
     {
       name: "Small avatar",
-      selector: ".pZp3x, .pZp3x *",
+      selector: selfAndChildren("._9-9q"),
       async handler(event) {
         event.preventDefault();
         const userName = event.target
-          .closest(".pZp3x")
-          .nextSibling?.querySelector(".ZIAjV")?.innerText;
+          .closest("._9-m9")
+          .querySelector("._9-9c")?.innerText;
         if (!userName) return;
         await openUserStory(userName);
       },
     },
     {
       name: "Search panel avatar",
-      selector: "._4EzTm > .h5uC0, ._4EzTm > .h5uC0 *",
+      selector: selfAndChildren("._4EzTm > .h5uC0"),
       async handler(event) {
         event.preventDefault();
         const userName = event.target
@@ -981,19 +1008,19 @@
     },
     {
       name: "Profile page avatar",
-      selector: ".eC4Dz, .eC4Dz *",
+      selector: selfAndChildren("._a4jp > div"),
       async handler(event) {
         event.preventDefault();
         const userName = event.target
-          .closest(".eC4Dz")
-          .nextSibling?.querySelector(".fKFbl")?.innerText;
+          .closest("._a4pi")
+          .querySelector("._9_6g")?.innerText;
         if (!userName) return;
         await openHdAvatar(userName);
       },
     },
     {
       name: "Profile page username",
-      selector: ".fKFbl",
+      selector: "._9_68._9_6f._9_6g._9_6j._9_6x",
       async handler(event) {
         const userName = event.target.innerText;
         await openUserStory(userName);
@@ -1001,7 +1028,7 @@
     },
     {
       name: "Tray bar",
-      selector: ".zGtbP",
+      selector: "._9zjb",
       handler: openStoriesTimeline,
     },
   ];
@@ -1009,7 +1036,7 @@
   const middleClickEventHandlers = [
     {
       name: "Post video",
-      selector: ".fXIG0, .tWeCl, .Q9bIO",
+      selector: "._9_fi, .tWeCl, .Q9bIO",
       handler: openPostVideo,
     },
   ];
@@ -1090,33 +1117,34 @@
 
   // ==================== Script parser ====================
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    // Parsing hardcoded app-ID and queryHash
-    const scriptElement = document.head.querySelector(
-      "link[href*='ConsumerLibCommons.js']",
-    );
-    if (!scriptElement) {
-      errorLog("ERROR: unable to locate ConsumerLibCommons.js");
-      return;
-    }
-    try {
-      const response = await fetchWithRetry(scriptElement.href, 1);
-      const responseText = await response.text();
-      webAppID = responseText.match(/instagramWebDesktopFBAppId='(\d+)/)[1];
-      debugLog(`app-id: ${webAppID}`);
-      queryHash = responseText.match(
-        /const .="([^"]+).*(?<=fetchHighlightReels)/,
-      )[1];
-      debugLog(`queryHash: ${queryHash}`);
-      if (!(webAppID && queryHash)) {
-        notificationAlert("Error parsing appID and query hash!");
-      }
-      if (webAppID !== "936619743392459") {
-        notificationAlert("App ID changed, beware!");
-      }
-    } catch (error) {
-      notificationAlert("ERROR: unable to parse hardcoded values");
-      errorLog(error);
-    }
-  });
+  // document.addEventListener("DOMContentLoaded", async () => {
+  //   // Parsing hardcoded app-ID and queryHash
+  //   const scriptElement = document.head.querySelector(
+  //     "link[href*='ConsumerLibCommons.js']",
+  //   );
+  //   if (!scriptElement) {
+  //     errorLog("ERROR: unable to locate ConsumerLibCommons.js");
+  //     return;
+  //   }
+  //   try {
+  //     const response = await fetchWithRetry(scriptElement.href, 1);
+  //     const responseText = await response.text();
+  //     webAppID = 936619743392459;
+  //     // webAppID = responseText.match(/instagramWebDesktopFBAppId='(\d+)/)[1];
+  //     debugLog(`app-id: ${webAppID}`);
+  //     queryHash = responseText.match(
+  //       /const .="([^"]+).*(?<=fetchHighlightReels)/,
+  //     )[1];
+  //     debugLog(`queryHash: ${queryHash}`);
+  //     if (!(webAppID && queryHash)) {
+  //       notificationAlert("Error parsing appID and query hash!");
+  //     }
+  //     if (webAppID !== "936619743392459") {
+  //       notificationAlert("App ID changed, beware!");
+  //     }
+  //   } catch (error) {
+  //     notificationAlert("ERROR: unable to parse hardcoded values");
+  //     errorLog(error);
+  //   }
+  // });
 })();
