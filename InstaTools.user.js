@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.1.28
+// @version      0.1.29
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -793,7 +793,7 @@
     const highlightDiv = event.target.closest("._9-ji");
     const highlightName = highlightDiv.querySelector("._9_68._9_6b").innerText;
     reelWindow.document.title = `"${highlightName}" highlight`;
-    const userName = window.location.pathname.slice(1, -1);
+    const userName = window.location.pathname.split("/")[1];
     let userHighlights;
     if (dataCache.highlights[userName]) {
       userHighlights = dataCache.highlights[userName];
@@ -957,7 +957,7 @@
   const anyClickEventHandlers = [
     {
       name: "Post image",
-      selector: "._9_90 ._9_92",
+      selector: "._9_vs ._9_92",
       handler: openPostImage,
     },
     {
@@ -996,12 +996,12 @@
     },
     {
       name: "Search panel avatar",
-      selector: selfAndChildren("._4EzTm > .h5uC0"),
+      selector: selfAndChildren("._9-g5 ._9zr7"),
       async handler(event) {
         event.preventDefault();
         const userName = event.target
-          .closest(".yC0tu")
-          .nextSibling?.querySelector(".uL8Hv")?.innerText;
+          .closest("._9-g5")
+          .querySelector("._9_6t")?.innerText;
         if (!userName) return;
         await openUserStory(userName);
       },
@@ -1036,7 +1036,7 @@
   const middleClickEventHandlers = [
     {
       name: "Post video",
-      selector: "._9_fi, .tWeCl, .Q9bIO",
+      selector: "._9_fi, ._9zu7",
       handler: openPostVideo,
     },
   ];
