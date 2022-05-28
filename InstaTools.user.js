@@ -1037,7 +1037,9 @@
     },
     {
       name: "Profile page avatar",
-      selector: selfAndChildren('main header div[role="button"]'),
+      selector: selfAndChildren(
+        "main > :first-child > header > :first-child > :first-child",
+      ),
       async handler(event) {
         event.preventDefault();
         const userName = event.target
