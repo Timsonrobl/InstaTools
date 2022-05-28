@@ -520,9 +520,11 @@
   }
 
   async function getPostData(postElement) {
-    const postUrl = postElement
-      .closest("._a045")
-      ?.querySelector("._9-kk._a6hd")?.href;
+    const postOrCommentUrl = postElement
+      .closest("article")
+      ?.querySelector("a time")
+      .closest("a")?.href;
+    const postUrl = postOrCommentUrl.match(/.*\/p\/[^/]*\//)[0];
     if (!postUrl) return null;
     if (dataCache.posts[postUrl]) {
       return dataCache.posts[postUrl];
@@ -537,7 +539,7 @@
     return postData;
   }
 
-  async function openPostVideo(event) {
+  async function openPostVideo(videoElement) {
     // a hack to make Chrome focus new tab on middle mouse event
     await new Promise((resolve) => {
       setTimeout(() => {
@@ -545,9 +547,8 @@
       }, 0);
     });
     const playerWindow = openNewTab();
-    const videoElement = event.target.parentElement.querySelector("._9zu7");
     if (!videoElement) return;
-    const postData = await getPostData(event.target);
+    const postData = await getPostData(videoElement);
     let videoItem;
     const posterFileName = getUrlFileName(videoElement.poster);
 
@@ -582,16 +583,13 @@
     openVideoPlayer(videoItem, playerWindow);
   }
 
-  async function openPostImage(event) {
-    const srcURL = event.target.parentElement.firstChild.firstChild.src;
+  async function openPostImage(imgElement) {
+    const srcURL = imgElement.src;
     if (!/\d{3,4}x\d{3,4}[/&_]/.test(srcURL)) {
-      window.open(
-        event.target.parentElement.firstChild.firstChild.src,
-        "_blank",
-      );
+      window.open(srcURL, "_blank");
     } else {
       const placeholderTab = openNewTab();
-      const postData = await getPostData(event.target);
+      const postData = await getPostData(imgElement);
       let photoItem;
 
       const photoFileName = getUrlFileName(srcURL);
@@ -614,8 +612,7 @@
           photoItem.image_versions2.candidates?.[0]?.url;
       } else {
         // old api branch. To be removed after complete phase out
-        placeholderTab.location.href =
-          event.target.parentElement.firstChild.firstChild.src;
+        placeholderTab.location.href = srcURL;
       }
     }
   }
@@ -790,8 +787,9 @@
 
   async function openHighlight(event) {
     const reelWindow = openNewTab();
-    const highlightDiv = event.target.closest("._9-ji");
-    const highlightName = highlightDiv.querySelector("._9_68._9_6b").innerText;
+    const highlightDiv =
+      event.target.closest("li").firstElementChild.firstElementChild;
+    const highlightName = highlightDiv.children[1].innerText;
     reelWindow.document.title = `"${highlightName}" highlight`;
     const userName = window.location.pathname.split("/")[1];
     let userHighlights;
@@ -807,7 +805,7 @@
       dataCache.highlights[userName] = userHighlights;
     }
     const thumbnailFilename = getUrlFileName(
-      highlightDiv.querySelector("._9zqd").src,
+      highlightDiv.querySelector("img").src,
     );
     const highlightData = userHighlights.tray.find((highlight) =>
       highlight.cover_media.cropped_image_version.url.includes(
@@ -928,6 +926,18 @@
     renderTimelinePage(sortedTray, timelineWindow.container, lastSeenReelsTime);
   }
 
+  function openPostMedia(event) {
+    const mediaFrame = event.target.closest("li, article > div > div");
+    const imgElement = mediaFrame.querySelector("img");
+    if (imgElement) {
+      openPostImage(imgElement);
+      return;
+    }
+    if (event.button !== 1) return;
+    const videoElement = mediaFrame.querySelector("video");
+    openPostVideo(videoElement);
+  }
+
   // ==================== Error reporter blocker ====================
 
   const ignoredErrors = ["cancelled", "InvalidStateError", "OZ_SOURCE_BUFFER"];
@@ -956,71 +966,83 @@
 
   const anyClickEventHandlers = [
     {
-      name: "Post image",
-      selector: "._9_vs ._9_92",
-      handler: openPostImage,
+      name: "Post Media Cover",
+      selector: 'article div[tabindex="-1"] > :nth-child(2)',
+      handler: openPostMedia,
+    },
+    {
+      name: "Post Media",
+      selector: 'article div[tabindex="0"] > :first-child  > :nth-child(2)',
+      handler: openPostMedia,
     },
     {
       name: "Highlight item",
-      selector: selfAndChildren("._a06f ._9-ji"),
+      selector: selfAndChildren('[role="menu"] li'),
       handler: openHighlight,
     },
     {
       name: "Stories tray avatar",
-      selector: selfAndChildren("._9ztx ._9zr7"),
+      selector: selfAndChildren(
+        'main > section > :first-child > :nth-child(2) [role="presentation"] [role="button"]',
+      ),
       async handler(event) {
-        const trayName = event.target
-          .closest("._9-ji")
-          .querySelector("._9__g").innerText;
+        const trayName =
+          event.target.closest("li").firstElementChild.firstElementChild
+            .children[1].firstElementChild.innerText;
         await openUserStory(trayName);
       },
     },
     {
       name: "Stories tray username",
-      selector: "._9__g._9__h",
+      selector:
+        'main > section > :first-child > :nth-child(2) [role="presentation"] button > :last-child > div',
       handler(event) {
         window.open(`/${event.target.innerText}`, "_blank");
       },
     },
     {
-      name: "Small avatar",
-      selector: selfAndChildren("._9-9q"),
+      name: "Post header avatar",
+      selector: selfAndChildren("article header > :first-child"),
       async handler(event) {
         event.preventDefault();
-        const userName = event.target
-          .closest("._9-m9")
-          .querySelector("._9-9c")?.innerText;
+        const userName =
+          event.target.closest("header").children[1].firstElementChild
+            .firstElementChild.firstElementChild.firstElementChild
+            .firstElementChild?.innerText;
         if (!userName) return;
         await openUserStory(userName);
       },
     },
     {
       name: "Search panel avatar",
-      selector: selfAndChildren("._9-g5 ._9zr7"),
+      selector: selfAndChildren(
+        '[aria-hidden="false"] [role="none"] > :first-child > :first-child > :first-child',
+      ),
       async handler(event) {
         event.preventDefault();
-        const userName = event.target
-          .closest("._9-g5")
-          .querySelector("._9_6t")?.innerText;
+        const userName =
+          event.target.closest("a").firstElementChild.children[1]
+            .firstElementChild.firstElementChild.firstElementChild
+            .firstElementChild.innerText;
         if (!userName) return;
         await openUserStory(userName);
       },
     },
     {
       name: "Profile page avatar",
-      selector: selfAndChildren("._a4jp > div"),
+      selector: selfAndChildren('main header div[role="button"]'),
       async handler(event) {
         event.preventDefault();
         const userName = event.target
-          .closest("._a4pi")
-          .querySelector("._9_6g")?.innerText;
+          .closest("header")
+          .querySelector("h1, h2")?.innerText;
         if (!userName) return;
         await openHdAvatar(userName);
       },
     },
     {
       name: "Profile page username",
-      selector: "._9_68._9_6f._9_6g._9_6j._9_6x",
+      selector: "header h1, header h2",
       async handler(event) {
         const userName = event.target.innerText;
         await openUserStory(userName);
@@ -1028,16 +1050,28 @@
     },
     {
       name: "Tray bar",
-      selector: "._9zjb",
+      selector: "main > section  > :first-child > :nth-child(2)",
       handler: openStoriesTimeline,
     },
   ];
 
   const middleClickEventHandlers = [
     {
-      name: "Post video",
-      selector: "._9_fi, ._9zu7",
-      handler: openPostVideo,
+      name: "Post Video",
+      selector: "article video",
+      async handler(event) {
+        await openPostVideo(event.target);
+      },
+    },
+    {
+      name: "Post Video Cover",
+      selector: "article div[aria-label]",
+      async handler(event) {
+        const videoElement = event.target
+          .closest("li, article")
+          .querySelector("video");
+        await openPostVideo(videoElement);
+      },
     },
   ];
 

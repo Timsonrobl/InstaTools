@@ -9,7 +9,7 @@ module.exports = {
     sourceType: "module",
   },
   rules: {
-    quotes: ["error", "double"],
+    quotes: ["error", "double", { avoidEscape: true }],
     // "no-console": "off",
     "prefer-destructuring": "off",
     "no-param-reassign": ["error", { props: false }],
