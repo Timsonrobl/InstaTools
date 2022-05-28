@@ -11,10 +11,9 @@
 // @grant        GM.getValue
 // @grant        GM.setValue
 // @grant        GM.notification
-// @require      https://unpkg.com/idb/build/iife/index-min.js
 // ==/UserScript==
 
-/* global GM, unsafeWindow, idb */
+/* global GM, unsafeWindow */
 
 (function main() {
   // ==================== Utility functions ====================
@@ -85,6 +84,14 @@
 
   function selfAndChildren(selector) {
     return `${selector}, ${selector} *`;
+  }
+
+  function getIdbResult(idbRequest) {
+    return new Promise((resolve) => {
+      idbRequest.onsuccess = () => {
+        resolve(idbRequest.result);
+      };
+    });
   }
 
   // ==================== Initialization ====================
@@ -171,10 +178,10 @@
 
     let userList;
     try {
-      const db = await idb.openDB("redux", 1);
+      const db = await getIdbResult(window.indexedDB.open("redux", 1));
       const storeName = "paths";
       const store = db.transaction(storeName).objectStore(storeName);
-      userList = await store.get("users.usernameToId");
+      userList = await getIdbResult(store.get("users.usernameToId"));
     } catch (error) {
       errorLog(error);
     }
