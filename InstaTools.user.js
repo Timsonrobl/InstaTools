@@ -933,16 +933,26 @@
     renderTimelinePage(sortedTray, timelineWindow.container, lastSeenReelsTime);
   }
 
-  function openPostMedia(event) {
+  async function checkImageOverlay(event) {
+    const mediaCandidate =
+      event.target.parentElement?.firstElementChild?.firstElementChild;
+    if (!(mediaCandidate?.clientWidth > 400)) return;
+    if (mediaCandidate?.tagName === "IMG") {
+      event.stopImmediatePropagation();
+      await openPostImage(mediaCandidate);
+    }
+  }
+
+  async function openPostMedia(event) {
     const mediaFrame = event.target.closest("li, article > div > div");
     const imgElement = mediaFrame.querySelector("img");
     if (imgElement) {
-      openPostImage(imgElement);
+      await openPostImage(imgElement);
       return;
     }
     if (event.button !== 1) return;
     const videoElement = mediaFrame.querySelector("video");
-    openPostVideo(videoElement);
+    await openPostVideo(videoElement);
   }
 
   // ==================== Error reporter blocker ====================
@@ -975,11 +985,6 @@
     {
       name: "Post Media Cover",
       selector: 'article div[tabindex="-1"] > :nth-child(2)',
-      handler: openPostMedia,
-    },
-    {
-      name: "Post Media",
-      selector: 'article div[tabindex="0"] > :first-child  > :nth-child(2)',
       handler: openPostMedia,
     },
     {
@@ -1062,6 +1067,13 @@
       selector: "main > section  > :first-child > :nth-child(2)",
       handler: openStoriesTimeline,
     },
+    {
+      // Must be last selector
+      name: "Post Media",
+      selector: "article div",
+      continuePropagation: true,
+      handler: checkImageOverlay,
+    },
   ];
 
   const middleClickEventHandlers = [
@@ -1097,7 +1109,7 @@
       );
       if (!selectedEntry) return;
       debugLog(`${selectedEntry.name} clicked`);
-      event.stopImmediatePropagation();
+      if (!selectedEntry.continuePropagation) event.stopImmediatePropagation();
       if (!handlerLock) {
         handlerLock = true;
         await selectedEntry.handler(event);
