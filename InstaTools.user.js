@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.3
+// @version      0.2.4
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -934,12 +934,18 @@
   }
 
   async function checkImageOverlay(event) {
-    const mediaCandidate =
+    const imageElement =
       event.target.parentElement?.firstElementChild?.firstElementChild;
-    if (!(mediaCandidate?.clientWidth > 400)) return;
-    if (mediaCandidate?.tagName === "IMG") {
+    if (imageElement?.tagName === "IMG" && imageElement?.clientWidth > 400) {
       event.stopImmediatePropagation();
-      await openPostImage(mediaCandidate);
+      await openPostImage(imageElement);
+      return;
+    }
+    if (event.button !== 1) return;
+    const videoElement = event.target.parentElement.querySelector("video");
+    if (videoElement) {
+      event.stopImmediatePropagation();
+      await openPostVideo(videoElement);
     }
   }
 
@@ -1069,7 +1075,7 @@
     },
     {
       // Must be last selector
-      name: "Post Media",
+      name: "Post Div",
       selector: "article div",
       continuePropagation: true,
       handler: checkImageOverlay,
