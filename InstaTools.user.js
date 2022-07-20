@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.4
+// @version      0.2.5
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -1001,7 +1001,7 @@
     {
       name: "Stories tray avatar",
       selector: selfAndChildren(
-        'main > section > :first-child > :nth-child(2) [role="presentation"] [role="button"]',
+        'main > div > section > :first-child > :nth-child(2) [role="presentation"] [role="button"]',
       ),
       async handler(event) {
         const trayName =
@@ -1013,7 +1013,7 @@
     {
       name: "Stories tray username",
       selector:
-        'main > section > :first-child > :nth-child(2) [role="presentation"] button > :last-child > div',
+        'main > div > section > :first-child > :nth-child(2) [role="presentation"] button > :last-child > div',
       handler(event) {
         window.open(`/${event.target.innerText}`, "_blank");
       },
@@ -1070,7 +1070,7 @@
     },
     {
       name: "Tray bar",
-      selector: "main > section  > :first-child > :nth-child(2)",
+      selector: "main > div > section > :first-child > :nth-child(2)",
       handler: openStoriesTimeline,
     },
     {
