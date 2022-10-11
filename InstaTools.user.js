@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.5
+// @version      0.2.6
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -92,6 +92,13 @@
         resolve(idbRequest.result);
       };
     });
+  }
+
+  function matchOrCheck(element, test) {
+    if (typeof test === "function") {
+      return test(element);
+    }
+    return element.matches(test);
   }
 
   // ==================== Initialization ====================
@@ -994,8 +1001,14 @@
       handler: openPostMedia,
     },
     {
+      // Must be above tray items
       name: "Highlight item",
-      selector: selfAndChildren('[role="menu"] li'),
+      selector(element) {
+        if (window.location.pathname !== "/") {
+          return element.matches(selfAndChildren('[role="menu"] li'));
+        }
+        return false;
+      },
       handler: openHighlight,
     },
     {
@@ -1111,7 +1124,7 @@
         `Click at node ${event.target.tagName}: "${event.target.className}"`,
       );
       const selectedEntry = anyClickEventHandlers.find((entry) =>
-        event.target.matches(entry.selector),
+        matchOrCheck(event.target, entry.selector),
       );
       if (!selectedEntry) return;
       debugLog(`${selectedEntry.name} clicked`);
@@ -1134,10 +1147,10 @@
       );
       const selectedEntry =
         anyClickEventHandlers.find((entry) =>
-          event.target.matches(entry.selector),
+          matchOrCheck(event.target, entry.selector),
         ) ||
         middleClickEventHandlers.find((entry) =>
-          event.target.matches(entry.selector),
+          matchOrCheck(event.target, entry.selector),
         );
       if (!selectedEntry) return;
       debugLog(`${selectedEntry.name} middle clicked`);
@@ -1151,16 +1164,19 @@
     true,
   );
 
-  const scrollCancelSelector = [
+  const scrollCancelChecks = [
     ...anyClickEventHandlers.map((entry) => entry.selector),
     ...middleClickEventHandlers.map((entry) => entry.selector),
-  ].join(", ");
+  ];
 
   //  Prevent middle mouse scroll
   document.addEventListener(
     "mousedown",
     (event) => {
-      if (event.button === 1 && event.target.matches(scrollCancelSelector)) {
+      if (
+        event.button === 1 &&
+        scrollCancelChecks.some((check) => matchOrCheck(event.target, check))
+      ) {
         event.preventDefault();
       }
     },
