@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.7
+// @version      0.2.8
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -955,7 +955,7 @@
       return;
     }
     if (event.button !== 1) return;
-    const videoElement = event.target.parentElement.querySelector("video");
+    const videoElement = event.target.closest("article")?.querySelector("video");
     if (videoElement) {
       event.stopImmediatePropagation();
       await openPostVideo(videoElement);
