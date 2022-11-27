@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.6
+// @version      0.2.7
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -534,11 +534,17 @@
   }
 
   async function getPostData(postElement) {
-    const postOrCommentUrl = postElement
-      .closest("article")
-      ?.querySelector("a time")
-      .closest("a")?.href;
-    const postUrl = postOrCommentUrl.match(/.*\/p\/[^/]*\//)[0];
+    const postURLRegex = /.*\/p\/[^/]*\//;
+    const postLinks = postElement.closest("article").querySelectorAll("a")
+    let postUrl;
+    // eslint-disable-next-line no-restricted-syntax
+    for (const postLink of postLinks) {
+      const match = postLink.href?.match(postURLRegex)?.[0];
+      if (match) {
+        postUrl = match;
+        break
+      }
+    }
     if (!postUrl) return null;
     if (dataCache.posts[postUrl]) {
       return dataCache.posts[postUrl];
