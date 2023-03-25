@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.8
+// @version      0.2.9
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -99,6 +99,14 @@
       return test(element);
     }
     return element.matches(test);
+  }
+
+  function sameWidthAncestor(element) {
+    let ancestor = element;
+    while (ancestor.clientWidth === ancestor.parentElement?.clientWidth) {
+      ancestor = ancestor.parentElement
+    }
+    return ancestor
   }
 
   // ==================== Initialization ====================
@@ -942,24 +950,8 @@
       compareNumProperty("latest_reel_media"),
     );
     const lastSeenReelsTime = (await GM.getValue("lastSeenTime")) || 0;
-    GM.setValue("lastSeenTime", sortedTray[0].latest_reel_media);
+    GM.setValue("lastSeenTime", sortedTray[0]?.latest_reel_media || 0);
     renderTimelinePage(sortedTray, timelineWindow.container, lastSeenReelsTime);
-  }
-
-  async function checkImageOverlay(event) {
-    const imageElement =
-      event.target.parentElement?.firstElementChild?.firstElementChild;
-    if (imageElement?.tagName === "IMG" && imageElement?.clientWidth > 400) {
-      event.stopImmediatePropagation();
-      await openPostImage(imageElement);
-      return;
-    }
-    if (event.button !== 1) return;
-    const videoElement = event.target.closest("article")?.querySelector("video");
-    if (videoElement) {
-      event.stopImmediatePropagation();
-      await openPostVideo(videoElement);
-    }
   }
 
   async function openPostMedia(event) {
@@ -1093,20 +1085,37 @@
       handler: openStoriesTimeline,
     },
     {
-      // Must be last selector
-      name: "Post Div",
-      selector: "article div",
-      continuePropagation: true,
-      handler: checkImageOverlay,
+      name: "Post Image",
+      selector: (target) => 
+        target.clientWidth < 800 && sameWidthAncestor(target).querySelector('img')?.clientWidth > 320,
+      continuePropagation: false,
+      async handler({target}) {
+        await openPostImage(target.parentElement.querySelector('img'));
+      },
     },
+    // {
+    //   // Must be last selector
+    //   name: "Post Div",
+    //   selector: "div",
+    //   continuePropagation: true,
+    //   handler: checkImageOverlay,
+    // },
   ];
 
   const middleClickEventHandlers = [
+
     {
       name: "Post Video",
-      selector: "article video",
-      async handler(event) {
-        await openPostVideo(event.target);
+      selector: (target) => 
+        target.clientWidth < 800 && sameWidthAncestor(target).querySelector('video')?.clientWidth > 320,
+      continuePropagation: false,
+      async handler({target}) {
+        console.log(11111);
+        console.log(222, sameWidthAncestor(target))
+        const videoElement = sameWidthAncestor(target).querySelector('video');
+        
+        console.log(22222, videoElement);
+        await openPostVideo(videoElement);
       },
     },
     {
@@ -1197,37 +1206,4 @@
     },
     true,
   );
-
-  // ==================== Script parser ====================
-
-  // document.addEventListener("DOMContentLoaded", async () => {
-  //   // Parsing hardcoded app-ID and queryHash
-  //   const scriptElement = document.head.querySelector(
-  //     "link[href*='ConsumerLibCommons.js']",
-  //   );
-  //   if (!scriptElement) {
-  //     errorLog("ERROR: unable to locate ConsumerLibCommons.js");
-  //     return;
-  //   }
-  //   try {
-  //     const response = await fetchWithRetry(scriptElement.href, 1);
-  //     const responseText = await response.text();
-  //     webAppID = 936619743392459;
-  //     // webAppID = responseText.match(/instagramWebDesktopFBAppId='(\d+)/)[1];
-  //     debugLog(`app-id: ${webAppID}`);
-  //     queryHash = responseText.match(
-  //       /const .="([^"]+).*(?<=fetchHighlightReels)/,
-  //     )[1];
-  //     debugLog(`queryHash: ${queryHash}`);
-  //     if (!(webAppID && queryHash)) {
-  //       notificationAlert("Error parsing appID and query hash!");
-  //     }
-  //     if (webAppID !== "936619743392459") {
-  //       notificationAlert("App ID changed, beware!");
-  //     }
-  //   } catch (error) {
-  //     notificationAlert("ERROR: unable to parse hardcoded values");
-  //     errorLog(error);
-  //   }
-  // });
 })();
