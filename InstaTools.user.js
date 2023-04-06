@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.9
+// @version      0.2.10
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -104,9 +104,9 @@
   function sameWidthAncestor(element) {
     let ancestor = element;
     while (ancestor.clientWidth === ancestor.parentElement?.clientWidth) {
-      ancestor = ancestor.parentElement
+      ancestor = ancestor.parentElement;
     }
-    return ancestor
+    return ancestor;
   }
 
   // ==================== Initialization ====================
@@ -543,14 +543,14 @@
 
   async function getPostData(postElement) {
     const postURLRegex = /.*\/p\/[^/]*\//;
-    const postLinks = postElement.closest("article").querySelectorAll("a")
+    const postLinks = postElement.closest("article").querySelectorAll("a");
     let postUrl;
     // eslint-disable-next-line no-restricted-syntax
     for (const postLink of postLinks) {
       const match = postLink.href?.match(postURLRegex)?.[0];
       if (match) {
         postUrl = match;
-        break
+        break;
       }
     }
     if (!postUrl) return null;
@@ -584,12 +584,24 @@
       // new api branch
       const carouselMedia = postData.items?.[0]?.carousel_media;
       if (carouselMedia) {
-        if (!posterFileName) return;
-        videoItem = carouselMedia.find(
-          (item) =>
-            item?.media_type === 2 &&
-            item?.image_versions2.candidates?.[0]?.url.includes(posterFileName),
-        );
+        if (posterFileName) {
+          videoItem = carouselMedia.find(
+            (item) =>
+              item?.media_type === 2 &&
+              item?.image_versions2.candidates?.[0]?.url.includes(
+                posterFileName,
+              ),
+          );
+          openVideoPlayer(videoItem, playerWindow);
+          return;
+        }
+        carouselMedia
+          .filter((item) => item?.media_type === 2)
+          .forEach((carouselVideo, index) => {
+            const carouselVideoWindow =
+              index === 0 ? playerWindow : openNewTab();
+            openVideoPlayer(carouselVideo, carouselVideoWindow);
+          });
       } else {
         videoItem = postData.items[0];
       }
@@ -1086,11 +1098,12 @@
     },
     {
       name: "Post Image",
-      selector: (target) => 
-        target.clientWidth < 800 && sameWidthAncestor(target).querySelector('img')?.clientWidth > 320,
+      selector: (target) =>
+        target.clientWidth < 1000 &&
+        sameWidthAncestor(target).querySelector("img")?.clientWidth > 320,
       continuePropagation: false,
-      async handler({target}) {
-        await openPostImage(target.parentElement.querySelector('img'));
+      async handler({ target }) {
+        await openPostImage(target.parentElement.querySelector("img"));
       },
     },
     // {
@@ -1103,18 +1116,14 @@
   ];
 
   const middleClickEventHandlers = [
-
     {
       name: "Post Video",
-      selector: (target) => 
-        target.clientWidth < 800 && sameWidthAncestor(target).querySelector('video')?.clientWidth > 320,
+      selector: (target) =>
+        target.clientWidth < 1000 &&
+        sameWidthAncestor(target).querySelector("video")?.clientWidth > 320,
       continuePropagation: false,
-      async handler({target}) {
-        console.log(11111);
-        console.log(222, sameWidthAncestor(target))
-        const videoElement = sameWidthAncestor(target).querySelector('video');
-        
-        console.log(22222, videoElement);
+      async handler({ target }) {
+        const videoElement = sameWidthAncestor(target).querySelector("video");
         await openPostVideo(videoElement);
       },
     },
