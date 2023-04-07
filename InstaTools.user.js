@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.11
+// @version      0.2.12
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -103,7 +103,9 @@
 
   function sameWidthAncestor(element) {
     let ancestor = element;
-    while (ancestor.clientWidth === ancestor.parentElement?.clientWidth) {
+    while (
+      Math.abs(ancestor.clientWidth - ancestor.parentElement?.clientWidth) < 1
+    ) {
       ancestor = ancestor.parentElement;
     }
     return ancestor;
@@ -584,25 +586,47 @@
       // new api branch
       const carouselMedia = postData.items?.[0]?.carousel_media;
       if (carouselMedia) {
-        if (posterFileName) {
-          videoItem = carouselMedia.find(
-            (item) =>
-              item?.media_type === 2 &&
-              item?.image_versions2.candidates?.[0]?.url.includes(
-                posterFileName,
-              ),
+        const carouselMediaVideos = carouselMedia.filter(
+          (item) => item?.media_type === 2,
+        );
+        if (carouselMediaVideos.length !== 1 && posterFileName) {
+          videoItem = carouselMediaVideos.find((item) =>
+            item?.image_versions2.candidates?.[0]?.url.includes(posterFileName),
           );
           openVideoPlayer(videoItem, playerWindow);
           return;
         }
-        carouselMedia
-          .filter((item) => item?.media_type === 2)
-          .forEach((carouselVideo, index) => {
+        try {
+          const ancestor = sameWidthAncestor(
+            videoElement.closest('*[role="presentation"]'),
+          );
+          const carouselMarkerContainer = [
+            ...ancestor.querySelectorAll("div"),
+          ].find(
+            (div) =>
+              div.childElementCount === carouselMedia.length &&
+              div.firstElementChild.clientWidth ===
+                div.firstElementChild.clientHeight &&
+              div.firstElementChild.clientWidth < 12,
+          );
+          const baseMarkerClassCount =
+            carouselMarkerContainer.firstElementChild.classList.length;
+          const activeMarker =
+            [...carouselMarkerContainer.children].find(
+              (marker) => marker.classList.length > baseMarkerClassCount,
+            ) ?? carouselMarkerContainer.firstElementChild;
+          const position = [...activeMarker.parentNode.children].indexOf(
+            activeMarker,
+          );
+          openVideoPlayer(carouselMedia[position], playerWindow);
+        } catch {
+          carouselMediaVideos.forEach((carouselVideo, index) => {
             const carouselVideoWindow =
               index === 0 ? playerWindow : openNewTab();
             openVideoPlayer(carouselVideo, carouselVideoWindow);
           });
-        return;
+          return;
+        }
       }
       videoItem = postData.items[0];
     } else {
