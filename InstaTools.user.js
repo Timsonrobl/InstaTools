@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.12
+// @version      0.2.13
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -101,14 +101,45 @@
     return element.matches(test);
   }
 
+  function widthRatioAncestor(element, minRatio, maxRatio) {
+    let ancestor = element;
+    while (ancestor.parentElement) {
+      const ratio =
+        Math.max(element.clientWidth, ancestor.parentElement.clientWidth) /
+        Math.min(element.clientWidth, ancestor.parentElement.clientWidth);
+      if (ratio > minRatio && ratio < maxRatio) {
+        return ancestor.parentElement;
+      }
+      ancestor = ancestor.parentElement;
+    }
+    return false;
+  }
+
   function sameWidthAncestor(element) {
     let ancestor = element;
+    let lastMeaningfulWidth = element.clientWidth;
+    const descendantX = element.getBoundingClientRect().x;
     while (
-      Math.abs(ancestor.clientWidth - ancestor.parentElement?.clientWidth) < 1
+      ancestor.parentElement &&
+      Math.abs(
+        descendantX - ancestor.parentElement?.getBoundingClientRect().x,
+      ) < 2 &&
+      (ancestor.parentElement?.clientWidth <= 1 ||
+        Math.abs(lastMeaningfulWidth - ancestor.parentElement?.clientWidth) < 2)
     ) {
+      if (ancestor.clientWidth > 1) lastMeaningfulWidth = ancestor.clientWidth;
       ancestor = ancestor.parentElement;
     }
     return ancestor;
+  }
+
+  function breakCallStack() {
+    // a hack to make Chrome focus new tab on middle mouse event
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve();
+      }, 0);
+    });
   }
 
   // ==================== Initialization ====================
@@ -545,7 +576,10 @@
 
   async function getPostData(postElement) {
     const postURLRegex = /.*\/p\/[^/]*\//;
-    const postLinks = postElement.closest("article").querySelectorAll("a");
+    const articleElement =
+      postElement.closest("article") ??
+      widthRatioAncestor(sameWidthAncestor(postElement), 1.2, 2);
+    const postLinks = articleElement.querySelectorAll("a");
     let postUrl;
     // eslint-disable-next-line no-restricted-syntax
     for (const postLink of postLinks) {
@@ -570,12 +604,7 @@
   }
 
   async function openPostVideo(videoElement) {
-    // a hack to make Chrome focus new tab on middle mouse event
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 0);
-    });
+    await breakCallStack();
     const playerWindow = openNewTab();
     if (!videoElement) return;
     const postData = await getPostData(videoElement);
@@ -651,33 +680,31 @@
     const srcURL = imgElement.src;
     if (!/\d{3,4}x\d{3,4}[/&_]/.test(srcURL)) {
       window.open(srcURL, "_blank");
-    } else {
-      const placeholderTab = openNewTab();
-      const postData = await getPostData(imgElement);
-      let photoItem;
+      return;
+    }
+    const placeholderTab = openNewTab();
+    const postData = await getPostData(imgElement);
+    let photoItem;
 
-      const photoFileName = getUrlFileName(srcURL);
+    const photoFileName = getUrlFileName(srcURL);
 
-      if (!postData?.graphql) {
-        // new api branch
-        const carouselMedia = postData?.items?.[0]?.carousel_media;
-        if (carouselMedia) {
-          photoItem = carouselMedia.find(
-            (item) =>
-              item?.media_type === 1 &&
-              item?.image_versions2.candidates?.[0]?.url.includes(
-                photoFileName,
-              ),
-          );
-        } else {
-          photoItem = postData.items[0];
-        }
-        placeholderTab.location.href =
-          photoItem.image_versions2.candidates?.[0]?.url;
+    if (!postData?.graphql) {
+      // new api branch
+      const carouselMedia = postData?.items?.[0]?.carousel_media;
+      if (carouselMedia) {
+        photoItem = carouselMedia.find(
+          (item) =>
+            item?.media_type === 1 &&
+            item?.image_versions2.candidates?.[0]?.url.includes(photoFileName),
+        );
       } else {
-        // old api branch. To be removed after complete phase out
-        placeholderTab.location.href = srcURL;
+        photoItem = postData.items[0];
       }
+      placeholderTab.location.href =
+        photoItem.image_versions2.candidates?.[0]?.url;
+    } else {
+      // old api branch. To be removed after complete phase out
+      placeholderTab.location.href = srcURL;
     }
   }
 
@@ -1123,7 +1150,7 @@
     {
       name: "Post Image",
       selector: (target) =>
-        target.clientWidth < 1000 &&
+        target.clientWidth < 1300 &&
         sameWidthAncestor(target).querySelector("img")?.clientWidth > 320,
       continuePropagation: false,
       async handler({ target }) {
@@ -1140,6 +1167,22 @@
   ];
 
   const middleClickEventHandlers = [
+    {
+      name: "Reel Poster",
+      selector: (target) =>
+        window.location.pathname.includes("/reels/") &&
+        sameWidthAncestor(target).parentElement.children.length === 4 &&
+        target.clientWidth / target.clientHeight < 0.66,
+      continuePropagation: false,
+      async handler(event) {
+        event.preventDefault();
+        await breakCallStack();
+        const posterUrl = sameWidthAncestor(event.target)
+          .querySelector("div[style]")
+          .style.backgroundImage.slice(5, -2);
+        window.open(posterUrl, "_blank");
+      },
+    },
     {
       name: "Post Video",
       selector: (target) =>
