@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.13
+// @version      0.2.14
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -140,6 +140,21 @@
         resolve();
       }, 0);
     });
+  }
+
+  function preventMiddleMouseScroll(document, selectors) {
+    document.addEventListener(
+      "mousedown",
+      (event) => {
+        if (
+          event.button === 1 &&
+          selectors.some((check) => matchOrCheck(event.target, check))
+        ) {
+          event.preventDefault();
+        }
+      },
+      true,
+    );
   }
 
   // ==================== Initialization ====================
@@ -284,6 +299,10 @@
       );
       throw new Error("PopUpBlocked");
     }
+    preventMiddleMouseScroll(newTab.document, [
+      ".story-thumbnail",
+      ".story-block",
+    ]);
     const style = document.createElement("style");
     style.innerText = `
       body {
@@ -762,6 +781,10 @@
       a.href = reelItem.image_versions2.candidates[0].url;
     } else {
       img.addEventListener("click", () => {
+        openVideoPlayer(reelItem);
+      });
+      img.addEventListener("auxclick", (event) => {
+        if (event.button !== 1) return;
         openVideoPlayer(reelItem);
       });
       const vidMark = createElementPlus({
@@ -1259,20 +1282,7 @@
     ...anyClickEventHandlers.map((entry) => entry.selector),
     ...middleClickEventHandlers.map((entry) => entry.selector),
   ];
-
-  //  Prevent middle mouse scroll
-  document.addEventListener(
-    "mousedown",
-    (event) => {
-      if (
-        event.button === 1 &&
-        scrollCancelChecks.some((check) => matchOrCheck(event.target, check))
-      ) {
-        event.preventDefault();
-      }
-    },
-    true,
-  );
+  preventMiddleMouseScroll(document, scrollCancelChecks);
 
   //  Prevent double click event handlers
   document.addEventListener(
