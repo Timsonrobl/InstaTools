@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.14
+// @version      0.2.15
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -121,6 +121,8 @@
     const descendantX = element.getBoundingClientRect().x;
     while (
       ancestor.parentElement &&
+      // dirty fix for better carousel item container detection 
+      ancestor.parentElement.tagName !== "UL" &&
       Math.abs(
         descendantX - ancestor.parentElement?.getBoundingClientRect().x,
       ) < 2 &&
@@ -1161,6 +1163,7 @@
       name: "Profile page username",
       selector: "header h1, header h2",
       async handler(event) {
+        event.preventDefault();
         const userName = event.target.innerText;
         await openUserStory(userName);
       },
@@ -1180,13 +1183,6 @@
         await openPostImage(target.parentElement.querySelector("img"));
       },
     },
-    // {
-    //   // Must be last selector
-    //   name: "Post Div",
-    //   selector: "div",
-    //   continuePropagation: true,
-    //   handler: checkImageOverlay,
-    // },
   ];
 
   const middleClickEventHandlers = [
@@ -1245,7 +1241,11 @@
       if (!selectedEntry.continuePropagation) event.stopImmediatePropagation();
       if (!handlerLock) {
         handlerLock = true;
-        await selectedEntry.handler(event);
+        try {
+          await selectedEntry.handler(event);
+        } catch (e) {
+          errorLog(e);
+        }
         handlerLock = false;
       }
     },
@@ -1271,7 +1271,11 @@
       event.stopImmediatePropagation();
       if (!handlerLock) {
         handlerLock = true;
-        await selectedEntry.handler(event);
+        try {
+          await selectedEntry.handler(event);
+        } catch (e) {
+          errorLog(e);
+        }
         handlerLock = false;
       }
     },
