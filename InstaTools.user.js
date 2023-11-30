@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.15
+// @version      0.2.16
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -121,7 +121,7 @@
     const descendantX = element.getBoundingClientRect().x;
     while (
       ancestor.parentElement &&
-      // dirty fix for better carousel item container detection 
+      // dirty fix for better carousel item container detection
       ancestor.parentElement.tagName !== "UL" &&
       Math.abs(
         descendantX - ancestor.parentElement?.getBoundingClientRect().x,
@@ -1099,9 +1099,7 @@
     },
     {
       name: "Stories tray avatar",
-      selector: selfAndChildren(
-        'main > div > section > :first-child > :nth-child(2) [role="presentation"] [role="button"]',
-      ),
+      selector: selfAndChildren("._aap0 button"),
       async handler(event) {
         const trayName =
           event.target.closest("li").firstElementChild.firstElementChild
@@ -1111,8 +1109,7 @@
     },
     {
       name: "Stories tray username",
-      selector:
-        'main > div > section > :first-child > :nth-child(2) [role="presentation"] button > :last-child > div',
+      selector: "._aap0 button > :last-child > div",
       handler(event) {
         window.open(`/${event.target.innerText}`, "_blank");
       },
@@ -1170,7 +1167,7 @@
     },
     {
       name: "Tray bar",
-      selector: "main > div > section > :first-child > :nth-child(2)",
+      selector: "._aap0",
       handler: openStoriesTimeline,
     },
     {
@@ -1281,6 +1278,32 @@
     },
     true,
   );
+
+  // document.addEventListener(
+  //   "click",
+  //   async (event) => {
+  //     event.preventDefault();
+  //     event.stopImmediatePropagation();
+  //     const elementsAtPoint = document.elementsFromPoint(
+  //       event.clientX,
+  //       event.clientY,
+  //     );
+  //     const mediaElements = [...elementsAtPoint].filter((element) =>
+  //       ["IMG", "VIDEO", "CANVAS", "A", "LI"].includes(element.tagName),
+  //     );
+  //     const image = mediaElements.find((element) => element.tagName === "IMG");
+  //     if (image) {
+  //       if (
+  //         image.clientHeight === image.clientWidth &&
+  //         image.clientWidth < 60
+  //       ) {
+  //         debugLog("avatar image clicked");
+  //       }
+  //     }
+  //     debugLog(mediaElements);
+  //   },
+  //   true,
+  // );
 
   const scrollCancelChecks = [
     ...anyClickEventHandlers.map((entry) => entry.selector),
