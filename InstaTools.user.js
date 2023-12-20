@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.17
+// @version      0.2.18
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -236,7 +236,7 @@
   async function getUserId(userName) {
     const sharedDataUser =
       // eslint-disable-next-line no-underscore-dangle
-      unsafeWindow._sharedData.entry_data.ProfilePage?.[0].graphql?.user;
+      unsafeWindow._sharedData?.entry_data?.ProfilePage?.[0].graphql?.user;
     if (sharedDataUser?.username === userName) {
       return sharedDataUser.id;
     }
@@ -1098,20 +1098,20 @@
       handler: openHighlight,
     },
     {
+      name: "Stories tray username",
+      selector: "._aauo ul button > :last-child > div",
+      handler(event) {
+        window.open(`/${event.target.innerText}`, "_blank");
+      },
+    },
+    {
       name: "Stories tray avatar",
-      selector: selfAndChildren("._aauo button"),
+      selector: selfAndChildren("._aauo ul button"),
       async handler(event) {
         const trayName =
           event.target.closest("li").firstElementChild.firstElementChild
             .children[1].firstElementChild.innerText;
         await openUserStory(trayName);
-      },
-    },
-    {
-      name: "Stories tray username",
-      selector: "._aauo button > :last-child > div",
-      handler(event) {
-        window.open(`/${event.target.innerText}`, "_blank");
       },
     },
     {
