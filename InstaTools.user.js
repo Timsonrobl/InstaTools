@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.18
+// @version      0.2.19
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -905,7 +905,7 @@
     const reelWindow = openNewTab();
     const highlightDiv =
       event.target.closest("li").firstElementChild.firstElementChild;
-    const highlightName = highlightDiv.children[1].innerText;
+    const highlightName = highlightDiv.firstElementChild.children[1].innerText;
     reelWindow.document.title = `"${highlightName}" highlight`;
     const userName = window.location.pathname.split("/")[1];
     let userHighlights;
