@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.19
+// @version      0.2.20
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -15,7 +15,7 @@
 
 /* global GM, unsafeWindow */
 
-(function main() {
+(async function main() {
   // ==================== Utility functions ====================
 
   function debugLog(...messages) {
@@ -26,6 +26,24 @@
   function errorLog(...messages) {
     // eslint-disable-next-line no-console
     console.error(...messages);
+  }
+
+  function notificationAlert(text) {
+    GM.notification({
+      title: "InstaTools Warning",
+      text,
+    });
+  }
+
+  if (unsafeWindow.cacheMediaInterfaceLayer) {
+    if (
+      unsafeWindow.cacheMediaInterfaceLayer.key ===
+      (await GM.getValue("cacheMediaKey"))
+    ) {
+      window.open = unsafeWindow.cacheMediaInterfaceLayer.open;
+    } else {
+      notificationAlert("cache media key mismatch!");
+    }
   }
 
   function sleep(ms) {
@@ -75,13 +93,6 @@
     return URL.split("/").pop().split("?")[0];
   }
 
-  function notificationAlert(text) {
-    GM.notification({
-      title: "InstaTools Warning",
-      text,
-    });
-  }
-
   function selfAndChildren(selector) {
     return `${selector}, ${selector} *`;
   }
@@ -116,23 +127,30 @@
   }
 
   function sameWidthAncestor(element) {
-    let ancestor = element;
+    let ancestorCandidate = element.parentElement;
+    let currentElement = ancestorCandidate;
     let lastMeaningfulWidth = element.clientWidth;
     const descendantX = element.getBoundingClientRect().x;
     while (
-      ancestor.parentElement &&
+      currentElement?.parentElement &&
       // dirty fix for better carousel item container detection
-      ancestor.parentElement.tagName !== "UL" &&
-      Math.abs(
-        descendantX - ancestor.parentElement?.getBoundingClientRect().x,
-      ) < 2 &&
-      (ancestor.parentElement?.clientWidth <= 1 ||
-        Math.abs(lastMeaningfulWidth - ancestor.parentElement?.clientWidth) < 2)
+      currentElement.parentElement.tagName !== "UL" &&
+      (currentElement.parentElement.clientWidth < 1 ||
+        (Math.abs(
+          descendantX - currentElement.parentElement?.getBoundingClientRect().x,
+        ) < 2 &&
+          Math.abs(
+            lastMeaningfulWidth - currentElement.parentElement?.clientWidth,
+          ) < 2))
     ) {
-      if (ancestor.clientWidth > 1) lastMeaningfulWidth = ancestor.clientWidth;
-      ancestor = ancestor.parentElement;
+      if (currentElement.clientWidth > 1) {
+        ancestorCandidate = currentElement;
+        lastMeaningfulWidth = currentElement.clientWidth;
+      }
+      currentElement = currentElement.parentElement;
     }
-    return ancestor;
+    debugLog("Same width search: ", ancestorCandidate);
+    return ancestorCandidate ?? element;
   }
 
   function breakCallStack() {
@@ -1099,14 +1117,15 @@
     },
     {
       name: "Stories tray username",
-      selector: "._aauo ul button > :last-child > div",
+      // selector: "._aauo ul button > :last-child > div",
+      selector: '[role="menu"] ul button > :last-child > div',
       handler(event) {
         window.open(`/${event.target.innerText}`, "_blank");
       },
     },
     {
       name: "Stories tray avatar",
-      selector: selfAndChildren("._aauo ul button"),
+      selector: selfAndChildren('[role="menu"] ul button'),
       async handler(event) {
         const trayName =
           event.target.closest("li").firstElementChild.firstElementChild
@@ -1158,7 +1177,7 @@
     },
     {
       name: "Profile page username",
-      selector: "header h1, header h2",
+      selector: "header h1 span, header h2 span",
       async handler(event) {
         event.preventDefault();
         const userName = event.target.innerText;
@@ -1167,7 +1186,7 @@
     },
     {
       name: "Tray bar",
-      selector: "._aap0",
+      selector: '[role="menu"]>*>*',
       handler: openStoriesTimeline,
     },
     {
@@ -1187,14 +1206,17 @@
       name: "Reel Poster",
       selector: (target) =>
         window.location.pathname.includes("/reels/") &&
-        sameWidthAncestor(target).parentElement.children.length === 4 &&
-        target.clientWidth / target.clientHeight < 0.66,
+        [...sameWidthAncestor(target).querySelectorAll("*")].find((node) =>
+          node.style.backgroundImage?.startsWith("url"),
+        ),
       continuePropagation: false,
       async handler(event) {
         event.preventDefault();
         await breakCallStack();
-        const posterUrl = sameWidthAncestor(event.target)
-          .querySelector("div[style]")
+        const posterUrl = [
+          ...sameWidthAncestor(event.target).querySelectorAll("*"),
+        ]
+          .find((node) => node.style.backgroundImage?.startsWith("url"))
           .style.backgroundImage.slice(5, -2);
         window.open(posterUrl, "_blank");
       },
