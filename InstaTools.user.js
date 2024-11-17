@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         InstaTools
 // @namespace    http://tampermonkey.net/
-// @version      0.2.20
+// @version      0.2.21
 // @description  Social network enhancements for power users
 // @author       Timsonrobl
 // @updateURL    https://github.com/Timsonrobl/InstaTools/raw/master/InstaTools.user.js
@@ -786,15 +786,17 @@
       className: "story-block",
     });
     const takenAt = new Date(reelItem.taken_at * 1000);
-    const imageCandidate = reelItem.image_versions2.candidates.find(
-      (candidate) => candidate.width === 320,
-    );
+    const thumbItemWidthTarget = 320;
+    const imageCandidate = [...reelItem.image_versions2.candidates].sort(
+      (candidateA, candidateB) =>
+        Math.abs(candidateA.width - thumbItemWidthTarget) -
+        Math.abs(candidateB.width - thumbItemWidthTarget),
+    )[0];
     const img = createElementPlus({
       tagName: "img",
       className: "story-thumbnail",
       title: takenAt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" }),
-      width: imageCandidate?.width || 320,
-      height: imageCandidate?.height || 320,
+      width: thumbItemWidthTarget,
     });
     a.appendChild(img);
     if (reelItem.media_type === 1) {
